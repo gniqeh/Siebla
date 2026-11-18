@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent
 EXTENSIONS = ROOT / "extensions"
 PENDING = EXTENSIONS / ".pending"
 MANIFEST = "siebla-dlc.json"
-LIMIT_BYTES = 20_000_000
+LIMIT_BYTES = 18_000_000
 MAX_EXTRACTED = 900_000_000
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,75}$")
 _dll_handles = []
@@ -61,7 +61,7 @@ def _read_manifest(path):
     if not path.is_file() or path.suffix.lower() != ".zip":
         raise ValueError("请选择 ZIP 格式的 Siebla DLC")
     if path.stat().st_size > LIMIT_BYTES:
-        raise ValueError(f"{path.name} 超过 20 MB 分卷上限")
+        raise ValueError(f"{path.name} 超过 18,000,000 字节分卷上限")
     with zipfile.ZipFile(path) as z:
         m = json.loads(z.read(MANIFEST).decode("utf-8"))
     signature = _identity(m)
