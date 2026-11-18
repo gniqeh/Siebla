@@ -45,6 +45,7 @@ public class SieblaWindow : Form {
         AddButton(top, "打开", (s,e) => OpenBook());
         AddButton(top, "加载 DLC", (s,e) => LoadDlc());
         AddButton(top, "已加载 DLC", (s,e) => ShowDlc());
+        AddButton(top, "告诉大模型我能干啥", (s,e) => ShowAiCapabilities());
         area.Dock = DockStyle.Fill;
         area.AutoScroll = true;
         area.FlowDirection = FlowDirection.TopDown;
@@ -128,6 +129,11 @@ public class SieblaWindow : Form {
         Action next = null;
         next = () => { if(i < cells.Count) RunCell(cells[i++], next); };
         next();
+    }
+    void ShowAiCapabilities() {
+        var cell = AddCell("from capabilities import describe_environment\\nprint(describe_environment())");
+        RunCell(cell);
+        status.Text = "说明将显示在新单元格输出区，可选择复制";
     }
     void ShowDlc() {
         // Uses the shared Python backend and displays the result in the notebook.
