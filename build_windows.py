@@ -3,7 +3,6 @@ import pathlib
 import shutil
 import subprocess
 import sys
-import urllib.request
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -15,25 +14,26 @@ LIMIT = 20_000_000
 
 
 def python_archive():
-    CACHE.mkdir(exist_ok=True)
-    archive = CACHE / PY_ZIP
-    if archive.exists():
-        if not zipfile.is_zipfile(archive):
-            raise RuntimeError(f"Invalid cached Python archive: {archive}")
-        print("Using cached Python:", archive)
-        return archive
-    partial = CACHE / (PY_ZIP + ".part")
-    print("Downloading:", PY_URL)
-    try:
-        urllib.request.urlretrieve(PY_URL, partial)
-        if not zipfile.is_zipfile(partial):
-            raise RuntimeError("Downloaded file is not a ZIP")
-        partial.replace(archive)
-    except Exception:
-        partial.unlink(missing_ok=True)
-        print("Manual download:", PY_URL)
-        print("Save the ZIP without extracting it to:", archive)
-        raise
+    """Prefer the versioned Python runtime committed to the repository."""
+    vendored = ROOT / "runtime" / PY_ZIP
+    cached = CACHE / PY_ZIP
+    if vendored.is_file():
+        archive = vendored
+    elif cached.is_file():
+        archive = cached
+    else:
+        raise FileNotFoundError(
+            f"Missing Python 3.11 runtime: {vendored}\n"
+            f"Download {PY_URL} and commit it under runtime/ "
+            "or copy it into downloads/."
+        )
+    if not zipfile.is_zipfile(archive):
+        raise RuntimeError(f"Invalid Python archive: {archive}")
+    with zipfile.ZipFile(archive) as z:
+        names = set(z.namelist())
+        if not {"python.exe", "python311.dll", "python311.zip"}.issubset(names):
+            raise RuntimeError(f"Not the expected Python 3.11 embedded runtime: {archive}")
+    print("Using bundled Python:", archive)
     return archive
 
 
