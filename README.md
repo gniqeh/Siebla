@@ -2,6 +2,10 @@
 
 Windows 10/11 x64 离线 Python 办公工作台。无须在目标电脑安装 Python、pip 或联网。核心包含 Python 3.12.10、openpyxl 3.1.5 和 et_xmlfile 2.0.0。
 
+## Windows EXE 图标
+
+构建时会自动使用仓库根目录的 `国家南方电网融合徽标 (1).png` 生成多尺寸 ICO，并写入三个版本的 `Siebla.exe` 图标资源。生成的临时 ICO 存放于 `downloads/siebla-icon.ico`，不单独放进最终便携 ZIP。构建电脑首次可能需要安装 Pillow 用于 PNG 转 ICO，目标电脑不需要它。图标会占用一定 ZIP 空间，浏览器版仍强制不超过18,000,000字节；Windows 构建与图标实际显示尚需验证。
+
 ## 核心构建
 
 在联网 Windows x64 构建电脑：
