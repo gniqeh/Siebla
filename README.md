@@ -37,7 +37,7 @@ dist/Siebla-browser.zip
 
 ## 核心使用
 
-解压对应 ZIP，在解压目录中双击 `Siebla.exe`。可以写 Python 代码并执行单元格，单元格共享变量，显示文本输出和报错，使用内置 OpenPyXL 处理 XLSX。
+解压对应 ZIP，在解压目录中双击 `Siebla.exe`。浏览器版将显示一个命令行服务窗口，关闭它就会终止本地服务；也可以双击 `启动浏览器版.cmd` 启动浏览器版。仅关闭浏览器标签页不会退出服务。可以写 Python 代码并执行单元格，单元格共享变量，显示文本输出和报错，使用内置 OpenPyXL 处理 XLSX。
 
 Native 原生版为了最小体积，使用“单元格列表 + 当前单元格编辑/输出”的布局，`Shift+Enter` 运行；通过“保存/打开”按钮使用固定文件 `work/Siebla-notebook.json`。
 
@@ -58,7 +58,7 @@ runtime/python-3.12.10-embed-amd64.zip
 ## 构建与兼容限制
 
 - 构建环境：Windows 64位、可运行的 Python 与 pip。
-- `native` 和 `browser` 不需要 C# 编译器。直接使用官方 `pythonw.exe` 的副本作为启动程序，利用 Python 自带启动模块打开选择的界面。
+- `native` 和 `browser` 不需要 C# 编译器。Native 使用 `pythonw.exe` 启动无控制台窗口；Browser 使用 `python.exe` 启动并保留可关闭的服务控制台，关闭控制台即结束服务。
 - `winforms` 构建机需要 `.NET Framework` 的 C# 编译器；目标电脑需要兼容的 .NET Framework，但不一定需要额外安装。
 - Python 嵌入式版仍可能需要特定 Microsoft C Runtime 组件，是否完全免安装必须在干净的 Win10 x64 机器上验证。
 - 目标电脑的单位软件白名单和未签名 EXE 提示依然可能阻止程序运行。
@@ -113,3 +113,8 @@ py build_pandas_dlc.py
 输出 `dlc_dist/Siebla-Pandas.zip`，其中含 Pandas、NumPy 及解析到的依赖。**DLC 的文件大小独立于20 MB核心本体预算**，目前尚无自动分卷导入功能。不要将不可信的 ZIP 导入办公电脑；Python 扩展含可执行代码和 DLL。
 
 目前已提交功能源码，但尚未完成 Windows 10 上三种界面逐一构建和实机安装测试。
+
+
+## Browser 版退出方式
+
+浏览器版启动后会同时打开 **本地网页** 和 **Siebla Browser 命令行窗口**。关闭该命令行窗口，即终止对应 Python 本地服务，解除对程序文件的占用。不要把关闭网页标签误认为退出服务。还可以运行 `启动浏览器版.cmd`，它同样使用前台 Python 服务进程。关闭窗口属于强制终止，退出前请先在网页里保存笔记本。
