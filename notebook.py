@@ -41,6 +41,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_GET(self):
+        if self.path == "/capabilities":
+            if (self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
+                    or self.headers.get("X-Notebook-Token") != TOKEN):
+                return self.reply(403, {"error": "Forbidden"})
+            from capabilities import describe_environment
+            return self.reply(200, {"text": describe_environment()})
         if self.path == "/dlc-status":
             if (self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
                     or self.headers.get("X-Notebook-Token") != TOKEN):
