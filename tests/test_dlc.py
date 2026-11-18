@@ -13,7 +13,7 @@ from unittest import mock
 import zipfile
 
 import dlc
-from build_pandas_dlc import make_volumes
+from dlc_packer import make_volumes
 
 
 def wheel(folder, module, size=0):
