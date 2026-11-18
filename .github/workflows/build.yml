@@ -37,6 +37,7 @@ jobs:
           & "$dir/python.exe" -c "import sys, openpyxl, et_xmlfile; assert sys.version_info[:2] == (3, 12); print(sys.executable, openpyxl.__version__)"
           & "$dir/python.exe" -c "import engine; print(engine.run_cell('2+3'))"
           if (!(Test-Path "$dir/Siebla.exe")) { throw "Missing launcher" }
+          if ($variant -eq "native") { & "$dir/python.exe" -c "import ui_native; print('Native UI import OK')" }
       - name: Upload portable ZIP
         uses: actions/upload-artifact@v4
         with:
