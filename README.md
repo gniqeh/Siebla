@@ -1,6 +1,6 @@
 # Siebla
 
-**Windows 64位、Python 3.11、离线便携式单元格笔记本。**
+**Windows 64位、Python 3.12、离线便携式单元格笔记本。**
 
 这个仓库的工作只有一件事：把本仓库源码和自带 Python 运行时打包成 **`dist/Siebla.zip`**，解压后可在无网络、未安装 Python 的 Windows 电脑上运行。
 
@@ -9,7 +9,7 @@
 ```text
 Siebla/
 ├── runtime/
-│   └── python-3.11.9-embed-amd64.zip    # 须提交的官方 Python 运行时（原 ZIP）
+│   └── python-3.12.10-embed-amd64.zip    # 须提交的官方 Python 运行时（原 ZIP）
 ├── build_windows.py
 ├── notebook.py
 ├── index.html
@@ -19,17 +19,17 @@ Siebla/
 └── .github/workflows/build.yml
 ```
 
-**注意：目前仓库中的 `runtime/` 仅有说明文件，Python 二进制 ZIP 尚未上传。** 构建脚本会优先读取 `runtime/python-3.11.9-embed-amd64.zip`，不再自动从 Python 官网下载；为完整的离线源码构建，须将该 ZIP 提交到仓库。可以在开发机上用：
+**注意：目前仓库中的 `runtime/` 仅有说明文件，Python 二进制 ZIP 尚未上传。** 构建脚本会优先读取 `runtime/python-3.12.10-embed-amd64.zip`，不再自动从 Python 官网下载；为完整的离线源码构建，须将该 ZIP 提交到仓库。可以在开发机上用：
 
 ```powershell
 mkdir runtime -Force
-Copy-Item "你下载好的python-3.11.9-embed-amd64.zip" "runtime/python-3.11.9-embed-amd64.zip"
-git add runtime/python-3.11.9-embed-amd64.zip
-git commit -m "Vendor Python 3.11.9 embedded runtime"
+Copy-Item "你下载好的python-3.12.10-embed-amd64.zip" "runtime/python-3.12.10-embed-amd64.zip"
+git add runtime/python-3.12.10-embed-amd64.zip
+git commit -m "Vendor Python 3.12.10 embedded runtime"
 git push
 ```
 
-官方下载源：<https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip>
+官方下载源：<https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip>
 
 仓库中不应提交打包后的 `dist/`。如果临时不提交运行时，也可以将该 ZIP 放入本地 `downloads/` 作为备用缓存。
 
