@@ -36,3 +36,15 @@ dialog::backdrop{background:#17243855}
 #info-content{white-space:pre-wrap;overflow-wrap:anywhere;max-height:58vh;overflow:auto;font:13px/1.6 Consolas,monospace;border:1px solid var(--border);border-radius:7px;padding:12px;background:#f9fbfe;user-select:text}
 .dialog-actions{display:flex;justify-content:flex-end;margin-top:12px}
 @media(max-width:760px){.topbar{padding:12px}.toolbar.secondary{margin-left:0}main{padding:0 10px}.cell{grid-template-columns:42px minmax(0,1fr);gap:6px}.bottom-actions{margin-left:48px}.prompt{font-size:11px}.controls .cell-status{width:100%}}
+
+/* Browser notebook: code line numbers, Jupyter command-mode focus, completion. */
+.cell.selected .panel{border-color:#79a3e3;box-shadow:0 0 0 2px #245dcc18,0 3px 14px #1a2f5210}
+.cell.selected:focus{outline:none}
+.cell.selected:focus .panel{border-left:4px solid var(--blue)}
+.panel{position:relative}
+.editor-area{display:grid;grid-template-columns:46px minmax(0,1fr);align-items:stretch}
+.line-numbers{padding:14px 8px 14px 0;text-align:right;white-space:pre;overflow:hidden;user-select:none;color:#8b98ac;background:#f8fafd;border-right:1px solid #e8edf4;font:13px/1.6 Consolas,"Cascadia Code",monospace}
+.editor-area .editor{min-height:110px;line-height:1.6;overflow:auto;white-space:pre}
+.completion-menu{position:absolute;z-index:4;left:54px;top:88px;max-width:calc(100% - 66px);width:320px;max-height:230px;overflow:auto;border:1px solid #99aed0;border-radius:7px;background:white;box-shadow:0 8px 26px #182c4b35;font:13px/1.5 Consolas,monospace}
+.completion-item{padding:5px 11px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.completion-item:hover,.completion-item.active{background:#eaf2ff;color:#184aa4}
