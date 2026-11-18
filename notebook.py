@@ -40,6 +40,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_GET(self):
+        if self.path == "/dlc-status":
+            if (self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
+                    or self.headers.get("X-Notebook-Token") != TOKEN):
+                return self.reply(403, {"error": "Forbidden"})
+            import dlc
+            return self.reply(200, {"installed": dlc.list_installed()})
         if self.path == "/?token=" + TOKEN:
             return self.reply(200, (ROOT / "index.html").read_bytes(), "text/html; charset=utf-8")
         if self.path == "/app.js":
