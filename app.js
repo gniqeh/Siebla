@@ -103,3 +103,42 @@ document.getElementById('dlc-list').onclick=async()=>{
     alert('已加载 DLC\n\n'+lines.join('\n\n'));
   }catch(error){alert('查询 DLC 失败：'+String(error));}
 };
+
+document.getElementById('ai-capabilities').onclick=async()=>{
+  try{
+    const response=await fetch('/capabilities',{headers:{'X-Notebook-Token':token}});
+    const data=await response.json();
+    if(!response.ok)throw Error(data.error||'无法生成环境说明');
+    const dialog=document.createElement('dialog');
+    dialog.style.cssText='width:min(760px,92vw);max-height:86vh;border:1px solid #bbb;border-radius:10px;padding:20px;';
+    const heading=document.createElement('h3');
+    heading.textContent='告诉大模型我能干啥';
+    const tip=document.createElement('p');
+    tip.textContent='这是按当前 Siebla 环境生成的说明，复制后粘贴给大模型。';
+    const text=document.createElement('textarea');
+    text.readOnly=true;
+    text.value=data.text;
+    text.style.cssText='width:100%;height:55vh;box-sizing:border-box;resize:vertical;';
+    const buttons=document.createElement('div');
+    buttons.style.cssText='display:flex;gap:10px;justify-content:flex-end;margin-top:12px;';
+    const copy=document.createElement('button');
+    copy.textContent='复制全部';
+    copy.onclick=async()=>{
+      try{
+        await navigator.clipboard.writeText(text.value);
+        copy.textContent='已复制';
+      }catch(error){
+        text.focus();text.select();
+        copy.textContent='请按 Ctrl+C 复制';
+      }
+    };
+    const close=document.createElement('button');
+    close.textContent='关闭';
+    close.onclick=()=>dialog.close();
+    buttons.append(copy,close);
+    dialog.append(heading,tip,text,buttons);
+    dialog.addEventListener('close',()=>dialog.remove());
+    document.body.append(dialog);
+    dialog.showModal();
+  }catch(error){alert('生成说明失败：'+String(error));}
+};
