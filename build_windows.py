@@ -88,7 +88,7 @@ def assemble(mode):
 
     files = ["engine.py", "dlc.py", "capabilities.py"]
     if mode == "browser":
-        files += ["sitecustomize.py", "notebook.py", "index.html", "app.js", "style.css"]
+        files += ["sitecustomize.py", "notebook.py", "completion.py", "index.html", "app.js", "style.css"]
     elif mode == "native":
         files += ["sitecustomize.py", "ui_native.py"]
     else:
@@ -133,10 +133,11 @@ def assemble(mode):
                 z.write(file, file.relative_to(dist))
     size = final.stat().st_size
     print(f"UI: {mode}\nOUTPUT: {final}\nSIZE: {size:,} bytes ({size/1e6:.2f} MB)")
-    if size > LIMIT:
+    limit = 18_000_000 if mode == "browser" else LIMIT
+    if size > limit:
         final.unlink()
-        raise RuntimeError(f"Package exceeds {LIMIT:,} bytes")
-    print("PASS: package is within the 20 MB limit")
+        raise RuntimeError(f"Package exceeds {limit:,} bytes ({mode})")
+    print(f"PASS: package is within the {limit:,}-byte limit")
     return final
 
 
