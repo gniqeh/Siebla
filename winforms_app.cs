@@ -43,6 +43,7 @@ public class SieblaWindow : Form {
         AddButton(top, "▶ 全部运行", (s,e) => RunAll());
         AddButton(top, "保存", (s,e) => SaveBook());
         AddButton(top, "打开", (s,e) => OpenBook());
+        AddButton(top, "加载 DLC", (s,e) => LoadDlc());
         area.Dock = DockStyle.Fill;
         area.AutoScroll = true;
         area.FlowDirection = FlowDirection.TopDown;
@@ -126,6 +127,15 @@ public class SieblaWindow : Form {
         Action next = null;
         next = () => { if(i < cells.Count) RunCell(cells[i++], next); };
         next();
+    }
+    void LoadDlc() {
+        using(var dialog = new OpenFileDialog { Filter = "Siebla 扩展包|*.zip", Title = "选择离线 DLC ZIP" }) {
+            if(dialog.ShowDialog() != DialogResult.OK) return;
+            // Python json literal provides safe quoting for arbitrary local paths.
+            string pathLiteral = json.Serialize(dialog.FileName);
+            var cell = AddCell("import dlc\ndlc.install(" + pathLiteral + ")");
+            RunCell(cell);
+        }
     }
     void SaveBook() {
         using(var dialog = new SaveFileDialog { Filter = "Siebla 笔记本|*.json",
