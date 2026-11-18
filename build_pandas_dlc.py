@@ -79,33 +79,10 @@ def make_volumes(name, version, wheels, output):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--name", default="PandasDLC")
-    parser.add_argument("--pandas", default="2.2.3")
-    args = parser.parse_args()
-    if not args.name.isascii() or not args.name.replace("-", "").replace("_", "").isalnum():
-        parser.error("Name must contain ASCII letters, digits, dashes or underscores")
-    with tempfile.TemporaryDirectory(prefix="siebla-pandas-") as temp:
-        wheel_dir = Path(temp)
-        subprocess.check_call([
-            sys.executable, "-m", "pip", "download", "--only-binary=:all:",
-            "--platform", "win_amd64", "--python-version", "312",
-            "--implementation", "cp", "--abi", "cp312",
-            "--dest", str(wheel_dir), f"pandas=={args.pandas}",
-        ])
-        wheels = sorted(wheel_dir.glob("*.whl"))
-        if not any(p.name.lower().startswith("numpy-") for p in wheels):
-            raise RuntimeError("NumPy wheel missing")
-        if not any(p.name.lower().startswith("pandas-") for p in wheels):
-            raise RuntimeError("Pandas wheel missing")
-        out = ROOT / "dlc_dist"
-        for old in out.glob(args.name + "_*.zip") if out.exists() else []:
-            old.unlink()
-        print(f"Creating {args.name} from {len(wheels)} wheels:")
-        paths = make_volumes(args.name, args.pandas, wheels, out)
-        print(f"DONE: {len(paths)} volumes; copy all ZIPs into ONE folder.")
-        print("In Siebla select ANY volume to import the whole DLC.")
-        print("All volumes <= 20,000,000 bytes.")
+    """Compatibility command for earlier Siebla PandasDLC builds."""
+    print("This builder now produces Siebla-Excel (including Pandas and NumPy).")
+    from build_dlcs import build_one
+    build_one("excel")
 
 
 if __name__ == "__main__":
