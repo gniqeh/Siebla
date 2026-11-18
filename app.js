@@ -490,6 +490,40 @@ document.getElementById('ai-capabilities').onclick=async()=>{
   }catch(error){showInfo('读取环境失败',error.message);}
 };
 
+document.getElementById('variables').onclick=async()=>{
+  try{
+    const data=await api('/variables');
+    const vars=data.variables||[];
+    const lines=vars.length
+      ?vars.map(x=>x.name+'  ['+x.type+']  '+x.preview)
+      :['当前会话没有用户变量。'];
+    showInfo('当前 Python 变量（'+vars.length+'）',lines.join('\n'));
+  }catch(error){showInfo('查看变量失败',error.message);}
+};
+
+document.getElementById('kernel-reset').onclick=async()=>{
+  if(busy){
+    showInfo('当前正在运行','请等当前单元格执行结束后重置。');
+    return;
+  }
+  const warning='确定重置 Python 运行时变量吗？\n\n'
+    +'这会清空已执行代码产生的变量（例如 df、pd），需要重新运行代码才能恢复。\n'
+    +'代码、当前输出、保存文件和已加载 DLC 不会删除。\n'
+    +'注意：这是轻量会话重置，不会重启整个 Python 进程。';
+  if(!confirm(warning))return;
+  const button=document.getElementById('kernel-reset');
+  button.disabled=true;
+  try{
+    await api('/kernel-reset',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:'{}'
+    });
+    closeCompletion();
+    runState.textContent='运行时变量已重置，重新运行单元格可恢复变量';
+    showInfo('内核已重置','用户变量已清空；代码、输出、保存文件及 DLC 均保留。');
+  }catch(error){showInfo('重置失败',error.message);}
+  finally{button.disabled=false;}
+};
+
 async function initialize(){
   try{
     const data=await api('/book');
