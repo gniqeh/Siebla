@@ -10,7 +10,6 @@ import traceback
 import webbrowser
 import tempfile
 import dlc  # Activate previously installed DLCs in browser sessions.
-from urllib.parse import unquote
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -22,6 +21,7 @@ TOKEN = secrets.token_urlsafe(24)
 VARS = {"__name__": "__main__"}
 LOCK = threading.Lock()
 MAX_BYTES = 3_000_000
+BOOK_FILE = WORK / 'Siebla-notebook.json'
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -40,7 +40,31 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+
+    def authorized(self, require_origin=False):
+        expected = f"127.0.0.1:{self.server.server_port}"
+        if self.headers.get("Host") != expected or self.headers.get("X-Notebook-Token") != TOKEN:
+            return False
+        return not require_origin or self.headers.get("Origin") == "http://" + expected
+
+    def read_json_body(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        if not 0 < length <= MAX_BYTES:
+            raise ValueError("文件为空或超过容量限制")
+        return json.loads(self.rfile.read(length))
+
     def do_GET(self):
+        if self.path == "/book":
+            if not self.authorized():
+                return self.reply(403, {"error": "Forbidden"})
+            if not BOOK_FILE.exists():
+                return self.reply(200, {"format": "siebla-notebook-v1", "cells": [], "saved": False})
+            try:
+                book = json.loads(BOOK_FILE.read_text(encoding="utf-8"))
+                return self.reply(200, {"format": "siebla-notebook-v1",
+                                        "cells": book.get("cells", []), "saved": True})
+            except (OSError, ValueError):
+                return self.reply(500, {"error": "笔记本读取失败，请检查 work 文件夹"})
         if self.path == "/capabilities":
             if (self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
                     or self.headers.get("X-Notebook-Token") != TOKEN):
@@ -62,6 +86,35 @@ class Handler(BaseHTTPRequestHandler):
         return self.reply(404, {"error": "Not found"})
 
     def do_POST(self):
+        if self.path == "/book":
+            if not self.authorized(require_origin=True):
+                return self.reply(403, {"error": "Forbidden"})
+            try:
+                data = self.read_json_body()
+                cells = data.get("cells")
+                if (data.get("format") != "siebla-notebook-v1"
+                        or not isinstance(cells, list) or len(cells) > 1000):
+                    raise ValueError("笔记本格式无效")
+                cleaned = []
+                for cell in cells:
+                    if not isinstance(cell, dict) or not isinstance(cell.get("code"), str):
+                        raise ValueError("单元格格式无效")
+                    output = cell.get("output", "")
+                    if not isinstance(output, str):
+                        raise ValueError("输出格式无效")
+                    cleaned.append({"code": cell["code"], "output": output[:120000]})
+                with LOCK:
+                    with tempfile.NamedTemporaryFile(
+                        dir=WORK, prefix=".siebla-book-", suffix=".tmp",
+                        mode="w", encoding="utf-8", delete=False
+                    ) as tmp:
+                        target = Path(tmp.name)
+                        json.dump({"format": "siebla-notebook-v1", "cells": cleaned},
+                                  tmp, ensure_ascii=False)
+                    os.replace(target, BOOK_FILE)
+                return self.reply(200, {"saved": True})
+            except (ValueError, OSError, TypeError) as exc:
+                return self.reply(400, {"error": str(exc)})
         origin = f"http://127.0.0.1:{self.server.server_port}"
         if self.path == "/dlc-select":
             if (self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
@@ -77,43 +130,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, {"message": message, "installed": dlc.list_installed()})
             except Exception as exc:
                 return self.reply(400, {"error": str(exc)})
-        if self.path == "/dlc":
-            if (self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
-                    or self.headers.get("Origin") != origin
-                    or self.headers.get("X-Notebook-Token") != TOKEN):
-                return self.reply(403, {"error": "Forbidden"})
-            temp_name = None
-            try:
-                name = unquote(self.headers.get("X-DLC-Name", ""))
-                if not name.lower().endswith(".zip") or name != Path(name).name:
-                    raise ValueError("无效 DLC 文件名")
-                length = int(self.headers.get("Content-Length", "0"))
-                if not 0 < length <= 220 * 1024 * 1024:
-                    return self.reply(413, {"error": "DLC 文件过大"})
-                with tempfile.NamedTemporaryFile(dir=WORK, suffix=".zip",
-                                                  prefix="siebla-upload-", delete=False) as temp:
-                    temp_name = Path(temp.name)
-                    remaining = length
-                    while remaining:
-                        block = self.rfile.read(min(1024 * 1024, remaining))
-                        if not block:
-                            raise ValueError("不完整的 DLC 上传")
-                        temp.write(block)
-                        remaining -= len(block)
-                # Keep original filename for the installed extension directory.
-                import dlc
-                source = temp_name.with_name(name)
-                if source.exists():
-                    raise ValueError("上传文件名冲突")
-                temp_name.rename(source)
-                temp_name = source
-                message = dlc.install(source)
-                return self.reply(200, {"message": message})
-            except Exception as exc:
-                return self.reply(400, {"error": str(exc)})
-            finally:
-                if temp_name is not None:
-                    temp_name.unlink(missing_ok=True)
         if (self.path != "/run" or self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
                 or self.headers.get("Origin") != origin
                 or self.headers.get("X-Notebook-Token") != TOKEN):
