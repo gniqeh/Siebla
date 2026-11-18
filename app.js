@@ -73,3 +73,20 @@ document.getElementById('file').onchange=async e=>{
 };
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();}});
 append('import sys\nprint("Python", sys.version.split()[0])\nprint("解释器：", sys.executable)');
+
+document.getElementById('dlc').onclick=()=>document.getElementById('dlc-file').click();
+document.getElementById('dlc-file').onchange=async e=>{
+  const file=e.target.files[0];if(!file)return;
+  const button=document.getElementById('dlc');button.disabled=true;
+  const old=button.textContent;button.textContent='导入中…';
+  try{
+    const response=await fetch('/dlc',{method:'POST',
+      headers:{'X-Notebook-Token':token,'X-DLC-Name':encodeURIComponent(file.name),
+               'Content-Type':'application/zip'},
+      body:file});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'DLC 导入失败');
+    alert(data.message||'DLC 导入成功');
+  }catch(error){alert('DLC 导入失败：'+String(error));}
+  finally{e.target.value='';button.disabled=false;button.textContent=old;}
+};
