@@ -124,7 +124,17 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     url = f"http://127.0.0.1:{server.server_port}/?token={TOKEN}"
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleTitleW("Siebla Browser | 关闭此窗口即退出")
+    except (AttributeError, OSError):
+        pass
+    print("=========================================", flush=True)
+    print("Siebla Browser - 本地服务正在运行", flush=True)
+    print("关闭这个命令行窗口，即退出 Siebla 并释放文件夹。", flush=True)
+    print("仅关闭浏览器页面不会结束本地服务。", flush=True)
     print("Siebla running on", url, flush=True)
+    print("=========================================", flush=True)
     webbrowser.open(url)
     try:
         server.serve_forever()
