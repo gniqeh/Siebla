@@ -9,6 +9,7 @@ import threading
 import traceback
 import webbrowser
 import tempfile
+import dlc  # Activate previously installed DLCs in browser sessions.
 from urllib.parse import unquote
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
