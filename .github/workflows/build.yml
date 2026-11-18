@@ -1,0 +1,33 @@
+name: Build Siebla
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up build Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Build offline package
+        run: python build_windows.py
+      - name: Smoke test embedded Python
+        shell: pwsh
+        run: |
+          $dir = Join-Path $PWD "dist/Siebla"
+          & "$dir/python.exe" -c "import sys, openpyxl, et_xmlfile; assert sys.version_info[:2] == (3, 11); print(sys.executable, openpyxl.__version__)"
+          & "$dir/python.exe" -c "import notebook; print('Notebook import OK')"
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Siebla-Windows-x64
+          path: dist/Siebla.zip
+          if-no-files-found: error
+          retention-days: 30
