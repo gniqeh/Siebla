@@ -110,6 +110,14 @@ def load_dlc():
     except Exception as exc:
         u.MessageBoxW(None, str(exc), "DLC 导入失败", 0x10)
 
+def show_installed_dlc():
+    try:
+        from dlc import installed_summary
+        u.MessageBoxW(None, installed_summary(), "已加载的 DLC", 0x40)
+    except Exception as exc:
+        u.MessageBoxW(None, str(exc), "DLC 查看失败", 0x10)
+
+
 cells = [{"code": 'import sys\nprint("Python", sys.version.split()[0])\nprint("解释器", sys.executable)', "output": ""}]
 selected = 0
 controls = {}
@@ -201,6 +209,7 @@ def window_proc(hwnd, msg, wparam, lparam):
         elif ident == 103: save_book()
         elif ident == 104: open_book()
         elif ident == 108: load_dlc()
+        elif ident == 109: show_installed_dlc()
         return 0
     if msg == WM_SIZE and controls:
         rect = W.RECT()
@@ -212,7 +221,7 @@ def window_proc(hwnd, msg, wparam, lparam):
         content_width = width - right_x - 12
         for key, x, w in (("run", right_x, 85), ("add", right_x+90, 85),
                           ("save", right_x+180, 85), ("open", right_x+270, 85),
-                          ("dlc", right_x+360, 95)):
+                          ("dlc", right_x+360, 95), ("dlc_list", right_x+460, 110)):
             u.MoveWindow(controls[key], x, 12, w, 32, True)
         code_height = max(120, (height-105)//2)
         u.MoveWindow(controls["code"], right_x, 53, content_width, code_height, True)
@@ -260,6 +269,7 @@ def main():
     controls["save"] = make("BUTTON", "保存", 103)
     controls["open"] = make("BUTTON", "打开", 104)
     controls["dlc"] = make("BUTTON", "加载 DLC", 108)
+    controls["dlc_list"] = make("BUTTON", "已加载 DLC", 109)
     controls["status"] = make("STATIC", "", 107)
     previous_edit_proc = u.SetWindowLongPtrW(controls["code"], GWL_WNDPROC,
                                               C.cast(edit_proc, C.c_void_p))
