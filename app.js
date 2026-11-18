@@ -9,6 +9,10 @@ let dirty = false;
 let serial = 0;
 let autoTimer = null;
 let saving = Promise.resolve();
+let selectedCell = null, commandMode = false, deleteArmedUntil = 0;
+let completionSequence = 0, completionTimer = null, completionMenu = null;
+let completionItems = [], completionIndex = 0, completionEditor = null, completionPartial = '';
+let composing = false;
 
 async function api(path, options={}) {
   const response = await fetch(path, {
@@ -37,6 +41,7 @@ function markDirty() {
 function append(code='', output='', focus=false) {
   const cell = document.createElement('section');
   cell.className = 'cell';
+  cell.tabIndex = 0;
   cell.dataset.id = String(++serial);
   const prompt = document.createElement('div');
   prompt.className = 'prompt';
@@ -44,9 +49,25 @@ function append(code='', output='', focus=false) {
   panel.className = 'panel';
   const editor = document.createElement('textarea');
   editor.className='editor';
+  editor.wrap = 'off';
   editor.value=code;
   editor.spellcheck=false;
   editor.setAttribute('aria-label','Python 代码');
+  const codeArea = document.createElement('div');
+  codeArea.className = 'editor-area';
+  const lineNumbers = document.createElement('div');
+  lineNumbers.className = 'line-numbers';
+  lineNumbers.setAttribute('aria-hidden', 'true');
+  const updateLines = () => {
+    const count = editor.value.split('\n').length;
+    lineNumbers.textContent = Array.from({length:count}, (_,i)=>i+1).join('\n');
+  };
+  updateLines();
+  editor.addEventListener('scroll', () => {
+    lineNumbers.scrollTop = editor.scrollTop;
+  });
+  codeArea.append(lineNumbers, editor);
+
   const controls = document.createElement('div');
   controls.className='controls';
   const status=document.createElement('span');
@@ -98,7 +119,7 @@ function append(code='', output='', focus=false) {
       markDirty();
     }
   });
-  panel.append(editor,controls,outputBox);
+  panel.append(codeArea,controls,outputBox);
   cell.append(prompt,panel);
   cellsBox.append(cell);
   updateNumbers();
