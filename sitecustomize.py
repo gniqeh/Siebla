@@ -1,19 +1,44 @@
-"""Start the selected UI only when the bundled pythonw.exe is renamed Siebla.exe."""
+"""Siebla startup hook used by the copied pythonw.exe windowed launcher."""
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent
 if Path(sys.executable).name.lower() == "siebla.exe":
     try:
         import os
-        os.chdir(Path(__file__).resolve().parent / "work")
-        if (Path(__file__).resolve().parent / "ui_native.py").is_file():
+        work = ROOT / "work"
+        work.mkdir(exist_ok=True)
+        os.chdir(work)
+        if (ROOT / "ui_native.py").is_file():
             from ui_native import main
-        else:
+        elif (ROOT / "notebook.py").is_file():
             from notebook import main
+        else:
+            raise RuntimeError("No Siebla UI module found in the package")
         main()
     except BaseException:
         import traceback
-        work = Path(__file__).resolve().parent / "work"
-        work.mkdir(exist_ok=True)
-        (work / "siebla-startup-error.txt").write_text(traceback.format_exc(), encoding="utf-8")
+        details = traceback.format_exc()
+        try:
+            work = ROOT / "work"
+            work.mkdir(exist_ok=True)
+            log = work / "siebla-startup-error.txt"
+            log.write_text(details, encoding="utf-8")
+        except Exception:
+            log = ROOT / "siebla-startup-error.txt"
+            try:
+                log.write_text(details, encoding="utf-8")
+            except Exception:
+                pass
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(
+                None,
+                "Siebla 无法启动。\\n错误日志位置：\\n"
+                + str(log) + "\\n\\n" + details[-1100:],
+                "Siebla 启动错误",
+                0x10
+            )
+        except Exception:
+            pass
         raise
