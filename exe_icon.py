@@ -10,7 +10,7 @@ import struct
 import subprocess
 import sys
 
-ICON_PNG = "国家南方电网融合徽标 (1).png"
+ICON_PNG = Path("assets") / "siebla-logo.png"
 
 
 def create_ico(root):
