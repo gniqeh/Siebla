@@ -105,6 +105,20 @@ function moveCompletion(amount){
   });
   completionMenu.children[completionIndex].scrollIntoView({block:'nearest'});
 }
+function positionCompletion(editor,menu){
+  const head=editor.value.slice(0,editor.selectionStart);
+  const lines=head.split('\n');
+  const line=lines.length-1;
+  const column=lines[line].length;
+  const style=getComputedStyle(editor);
+  const lineHeight=parseFloat(style.lineHeight)||21;
+  const charWidth=(parseFloat(style.fontSize)||13)*0.6;
+  const panel=editor.closest('.panel');
+  const left=46+15+column*charWidth-editor.scrollLeft;
+  const top=14+(line+1)*lineHeight-editor.scrollTop;
+  menu.style.left=Math.max(46,Math.min(left,panel.clientWidth-260))+'px';
+  menu.style.top=Math.max(14,Math.min(top,editor.clientHeight-22))+'px';
+}
 function renderCompletion(editor,items,prefix){
   closeCompletion();
   if(!items.length)return;
@@ -128,6 +142,7 @@ function renderCompletion(editor,items,prefix){
   }
   editor.closest('.panel').append(menu);
   completionMenu=menu;
+  positionCompletion(editor,menu);
 }
 function requestCompletion(editor,immediate=false){
   if(composing || busy)return;
@@ -176,6 +191,7 @@ function append(code='', output='', focus=false) {
   updateLines();
   editor.addEventListener('scroll', () => {
     lineNumbers.scrollTop = editor.scrollTop;
+    if(completionMenu && completionEditor===editor)positionCompletion(editor,completionMenu);
   });
   codeArea.append(lineNumbers, editor);
 
