@@ -46,14 +46,14 @@ class DlcTests(unittest.TestCase):
         return make_volumes(name, "1.0", [package], out)
 
     def test_missing_volume_then_recovery(self):
-        # Seed > 12 MB of incompressible payload so the packer must split.
+        # Seed > 18 MB of incompressible payload so the packer must split.
         import os
         folder = self.root / "source"
         folder.mkdir()
         path = folder / "testpkg-1.0.0-py3-none-any.whl"
         with zipfile.ZipFile(path, "w") as z:
             z.writestr("testpkg/__init__.py", "VALUE = 1")
-            z.writestr("testpkg/payload.bin", os.urandom(13_000_000))
+            z.writestr("testpkg/payload.bin", os.urandom(19_200_000))
         volumes = make_volumes("Siebla-Test", "1.0", [path], self.root / "Siebla-Test")
         self.assertGreaterEqual(len(volumes), 2)
         removed = volumes[-1]
