@@ -51,6 +51,9 @@ def complete(prefix, namespace):
                 obj = inspect.getattr_static(obj, part)
             except (AttributeError, TypeError, ValueError):
                 return []
+            # Stop at descriptors rather than reading property results.
+            if inspect.isdatadescriptor(obj):
+                return []
         words = _static_names(obj)
 
     # Hide private members until user explicitly starts typing an underscore.
