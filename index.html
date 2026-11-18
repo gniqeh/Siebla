@@ -1,5 +1,41 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Siebla · 离线 Python</title><link rel="stylesheet" href="/style.css"></head>
-<body><header><div><strong>Siebla</strong><small>本地离线 Python 笔记本</small></div><nav><button id="add">＋ 单元格</button><button id="all">▶ 运行全部</button><button id="save">保存</button><button id="load">打开</button><button id="dlc">加载 DLC</button><button id="dlc-list">已加载 DLC</button><button id="ai-capabilities">告诉大模型我能干啥</button><input id="dlc-file" type="file" accept=".zip" hidden><input id="file" type="file" accept=".json,.ipynb" hidden></nav></header>
-<main><p class="hint">Shift + Enter 运行当前单元格 · Ctrl + S 保存 · 单元格之间共享变量</p><div id="cells"></div></main>
-<script src="/app.js"></script></body></html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Siebla · 离线 Python 工作台</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><strong>Siebla</strong><small>离线 Python 工作台</small></div>
+  <nav class="toolbar" aria-label="笔记本操作">
+    <button id="add" class="primary">＋ 单元格</button>
+    <button id="all">▶ 运行全部</button>
+    <button id="save">保存到本地</button>
+    <button id="export">导出 JSON</button>
+    <button id="load">导入文件</button>
+    <input id="file" type="file" accept=".json,.ipynb" hidden>
+  </nav>
+  <nav class="toolbar secondary" aria-label="扩展和环境">
+    <button id="dlc">加载 DLC</button>
+    <button id="dlc-list">已加载 DLC</button>
+    <button id="ai-capabilities">复制环境</button>
+  </nav>
+</header>
+<main>
+  <div class="contextbar">
+    <span id="save-state" role="status" aria-live="polite">正在读取本地笔记本…</span>
+    <span id="run-state">Shift+Enter 运行当前格 · Ctrl+S 保存</span>
+  </div>
+  <div id="cells" aria-label="代码单元格"></div>
+  <div class="bottom-actions"><button id="add-bottom">＋ 在末尾添加单元格</button></div>
+</main>
+<dialog id="info-dialog" aria-labelledby="info-title">
+  <div class="dialog-top"><strong id="info-title">信息</strong><button id="info-close">关闭</button></div>
+  <div id="info-content"></div>
+  <div class="dialog-actions"><button id="info-copy">复制全部</button></div>
+</dialog>
+<script src="/app.js"></script>
+</body>
+</html>
