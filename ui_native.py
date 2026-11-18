@@ -49,6 +49,12 @@ u.SendMessageW.restype = LRESULT
 u.SendMessageW.argtypes = [H, W.UINT, WP, LP]
 u.GetKeyState.restype = W.SHORT
 u.GetKeyState.argtypes = [C.c_int]
+k.GetModuleHandleW.restype = H
+k.GetModuleHandleW.argtypes = [W.LPCWSTR]
+u.LoadCursorW.restype = H
+u.LoadCursorW.argtypes = [W.HINSTANCE, C.c_void_p]
+u.RegisterClassExW.argtypes = [C.POINTER(WNDCLASSEXW)]
+u.GetClientRect.argtypes = [H, C.POINTER(W.RECT)]
 
 WS_OVERLAPPEDWINDOW = 0x00CF0000
 WS_CHILD = 0x40000000
