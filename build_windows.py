@@ -1,40 +1,36 @@
-"""Build the standalone Siebla Windows x64 ZIP (Python 3.12)."""
-import pathlib
+"""Build one Siebla interface variant with the embedded Python 3.12.10 runtime."""
+import argparse
+import os
+from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 import sys
 import zipfile
 
-ROOT = pathlib.Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "downloads"
 PY_ZIP = "python-3.12.10-embed-amd64.zip"
-PY_URL = f"https://www.python.org/ftp/python/3.12.10/{PY_ZIP}"
 PACKAGES = {"openpyxl": "3.1.5", "et_xmlfile": "2.0.0"}
 LIMIT = 20_000_000
+MODES = ("native", "winforms", "browser")
 
 
 def python_archive():
-    """Prefer the versioned Python runtime committed to the repository."""
-    vendored = ROOT / "runtime" / PY_ZIP
+    primary = ROOT / "runtime" / PY_ZIP
     cached = CACHE / PY_ZIP
-    if vendored.is_file():
-        archive = vendored
-    elif cached.is_file():
-        archive = cached
-    else:
-        raise FileNotFoundError(
-            f"Missing Python 3.12 runtime: {vendored}\n"
-            f"Download {PY_URL} and commit it under runtime/ "
-            "or copy it into downloads/."
-        )
-    if not zipfile.is_zipfile(archive):
-        raise RuntimeError(f"Invalid Python archive: {archive}")
-    with zipfile.ZipFile(archive) as z:
+    source = primary if primary.is_file() else cached
+    if not source.is_file():
+        raise FileNotFoundError(f"Python ZIP is missing: {primary}")
+    if not zipfile.is_zipfile(source):
+        raise RuntimeError(f"Invalid embedded Python ZIP: {source}")
+    with zipfile.ZipFile(source) as z:
         names = set(z.namelist())
-        if not {"python.exe", "python312.dll", "python312.zip"}.issubset(names):
-            raise RuntimeError(f"Not the expected Python 3.12 embedded runtime: {archive}")
-    print("Using bundled Python:", archive)
-    return archive
+        if not {"python.exe", "pythonw.exe", "python312.dll", "python312.zip"}.issubset(names):
+            raise RuntimeError(f"Wrong Python distribution: {source}")
+        bad = z.testzip()
+        if bad:
+            raise RuntimeError(f"Corrupt Python ZIP: {bad}")
+    return source
 
 
 def wheels():
@@ -55,69 +51,101 @@ def wheels():
     return results
 
 
-def build():
+def extract_safe(archive, folder):
+    with zipfile.ZipFile(archive) as z:
+        for entry in z.namelist():
+            parts = PurePosixPath(entry.replace("\\", "/")).parts
+            if entry.startswith(("/", "\\")) or ".." in parts or (parts and ":" in parts[0]):
+                raise RuntimeError(f"Unsafe ZIP path: {entry}")
+        z.extractall(folder)
+
+
+def winforms_compiler():
+    windows = Path(os.environ.get("SystemRoot", r"C:\Windows"))
+    for base in ("Framework64", "Framework"):
+        path = windows / "Microsoft.NET" / base / "v4.0.30319" / "csc.exe"
+        if path.is_file():
+            return path
+    raise RuntimeError("Windows Forms variant requires csc.exe on the build computer only")
+
+
+def assemble(mode):
     if sys.platform != "win32" or sys.maxsize <= 2**32:
-        raise RuntimeError("Run on 64-bit Windows with Python and pip on the builder")
-    source = python_archive()
-    deps = wheels()
-    output = ROOT / "dist"
-    target = output / "Siebla"
+        raise RuntimeError("Build on Windows 64-bit with Python and pip")
+    source, dependencies = python_archive(), wheels()
+    dist = ROOT / "dist"
+    target = dist / ("Siebla-" + mode)
     if target.exists():
         shutil.rmtree(target)
-    target.mkdir(parents=True)
-    with zipfile.ZipFile(source) as z:
-        members = set(z.namelist())
-        if not {"python.exe", "python312.dll", "python312.zip"}.issubset(members):
-            raise RuntimeError("Wrong embedded Python distribution")
-        z.extractall(target)
+    target.mkdir(parents=True, exist_ok=True)
+    extract_safe(source, target)
     site = target / "Lib" / "site-packages"
     site.mkdir(parents=True)
-    for wheel in deps:
-        with zipfile.ZipFile(wheel) as z:
-            for member in z.namelist():
-                if ".." in pathlib.PurePosixPath(member).parts or member.startswith("/"):
-                    raise RuntimeError(f"Unsafe wheel entry: {member}")
-            z.extractall(site)
-    for info in site.glob("*.dist-info"):
-        shutil.rmtree(info)
-    for filename in ("notebook.py", "index.html", "app.js", "style.css"):
+    for wheel in dependencies:
+        extract_safe(wheel, site)
+    for metadata in site.glob("*.dist-info"):
+        shutil.rmtree(metadata)
+
+    files = ["engine.py"]
+    if mode == "browser":
+        files += ["sitecustomize.py", "notebook.py", "index.html", "app.js", "style.css"]
+    elif mode == "native":
+        files += ["sitecustomize.py", "ui_native.py"]
+    else:
+        files += ["runner.py"]
+
+    for filename in files:
         shutil.copy2(ROOT / filename, target / filename)
-    (target / "python312._pth").write_text(
-        "python312.zip\n.\nLib\\site-packages\n", encoding="utf-8"
-    )
-    # Compile a tiny windowed launcher: double-click Siebla.exe, no .cmd or console.
-    windows = pathlib.Path(__import__("os").environ.get("SystemRoot", r"C:\\Windows"))
-    compiler_paths = [
-        windows / "Microsoft.NET" / "Framework64" / "v4.0.30319" / "csc.exe",
-        windows / "Microsoft.NET" / "Framework" / "v4.0.30319" / "csc.exe",
-    ]
-    compiler = next((p for p in compiler_paths if p.is_file()), None)
-    if compiler is None:
-        raise RuntimeError(
-            "Windows .NET Framework C# compiler (csc.exe) is required to build Siebla.exe"
-        )
-    subprocess.check_call([
-        str(compiler), "/nologo", "/target:winexe",
-        "/reference:System.Windows.Forms.dll",
-        "/out:" + str(target / "Siebla.exe"),
-        str(ROOT / "launcher.cs"),
-    ])
-    if not (target / "Siebla.exe").is_file():
-        raise RuntimeError("Siebla.exe was not generated")
     (target / "work").mkdir(exist_ok=True)
-    final = output / "Siebla.zip"
+
+    if mode in ("native", "browser"):
+        # CPython's bundled windowed launcher is a real native Windows executable.
+        # Renaming it provides a zero-extra-runtime Siebla.exe; the sitecustomize
+        # bootstrap activates only for that executable name.
+        shutil.copy2(target / "pythonw.exe", target / "Siebla.exe")
+        path_config = "python312.zip\n.\nLib\\site-packages\nimport site\n"
+    else:
+        compiler = winforms_compiler()
+        subprocess.check_call([
+            str(compiler), "/nologo", "/target:winexe",
+            "/reference:System.Drawing.dll",
+            "/reference:System.Windows.Forms.dll",
+            "/reference:System.Web.Extensions.dll",
+            "/out:" + str(target / "Siebla.exe"),
+            str(ROOT / "winforms_app.cs"),
+        ])
+        path_config = "python312.zip\n.\nLib\\site-packages\n"
+
+    (target / "python312._pth").write_text(path_config, encoding="utf-8")
+    final = dist / f"Siebla-{mode}.zip"
     with zipfile.ZipFile(final, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for file in sorted(target.rglob("*")):
             if file.is_file():
-                z.write(file, file.relative_to(output))
+                z.write(file, file.relative_to(dist))
     size = final.stat().st_size
-    print(f"Output: {final}\nSize: {size / 1_000_000:.2f} MB")
+    print(f"UI: {mode}\nOUTPUT: {final}\nSIZE: {size:,} bytes ({size/1e6:.2f} MB)")
     if size > LIMIT:
         final.unlink()
-        raise RuntimeError(f"Size exceeds {LIMIT:,} bytes")
-    print("PASS: within 20 MB")
-    return 0
+        raise RuntimeError(f"Package exceeds {LIMIT:,} bytes")
+    print("PASS: package is within the 20 MB limit")
+    return final
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Siebla Windows x64 offline builder")
+    parser.add_argument("--ui", choices=MODES, help="Select one frontend")
+    args = parser.parse_args()
+    mode = args.ui
+    if mode is None and sys.stdin.isatty():
+        print("Select Siebla UI:\n  1. native   - Win32 desktop window (no .NET or browser)\n"
+              "  2. winforms - Windows Forms desktop window (.NET Framework)\n"
+              "  3. browser - local page opened in the default browser")
+        choice = input("Enter 1/2/3 [1]: ").strip() or "1"
+        mode = {"1": "native", "2": "winforms", "3": "browser"}.get(choice)
+        if mode is None:
+            parser.error("Choose 1, 2 or 3")
+    assemble(mode or "native")
 
 
 if __name__ == "__main__":
-    raise SystemExit(build())
+    main()
