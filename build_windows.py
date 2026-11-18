@@ -1,4 +1,4 @@
-"""Build the standalone Siebla Windows x64 ZIP (Python 3.11)."""
+"""Build the standalone Siebla Windows x64 ZIP (Python 3.12)."""
 import pathlib
 import shutil
 import subprocess
@@ -7,8 +7,8 @@ import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parent
 CACHE = ROOT / "downloads"
-PY_ZIP = "python-3.11.9-embed-amd64.zip"
-PY_URL = f"https://www.python.org/ftp/python/3.11.9/{PY_ZIP}"
+PY_ZIP = "python-3.12.10-embed-amd64.zip"
+PY_URL = f"https://www.python.org/ftp/python/3.12.10/{PY_ZIP}"
 PACKAGES = {"openpyxl": "3.1.5", "et_xmlfile": "2.0.0"}
 LIMIT = 20_000_000
 
@@ -23,7 +23,7 @@ def python_archive():
         archive = cached
     else:
         raise FileNotFoundError(
-            f"Missing Python 3.11 runtime: {vendored}\n"
+            f"Missing Python 3.12 runtime: {vendored}\n"
             f"Download {PY_URL} and commit it under runtime/ "
             "or copy it into downloads/."
         )
@@ -31,8 +31,8 @@ def python_archive():
         raise RuntimeError(f"Invalid Python archive: {archive}")
     with zipfile.ZipFile(archive) as z:
         names = set(z.namelist())
-        if not {"python.exe", "python311.dll", "python311.zip"}.issubset(names):
-            raise RuntimeError(f"Not the expected Python 3.11 embedded runtime: {archive}")
+        if not {"python.exe", "python312.dll", "python312.zip"}.issubset(names):
+            raise RuntimeError(f"Not the expected Python 3.12 embedded runtime: {archive}")
     print("Using bundled Python:", archive)
     return archive
 
@@ -67,7 +67,7 @@ def build():
     target.mkdir(parents=True)
     with zipfile.ZipFile(source) as z:
         members = set(z.namelist())
-        if not {"python.exe", "python311.dll", "python311.zip"}.issubset(members):
+        if not {"python.exe", "python312.dll", "python312.zip"}.issubset(members):
             raise RuntimeError("Wrong embedded Python distribution")
         z.extractall(target)
     site = target / "Lib" / "site-packages"
@@ -82,8 +82,8 @@ def build():
         shutil.rmtree(info)
     for filename in ("notebook.py", "index.html", "app.js", "style.css", "启动笔记本.cmd"):
         shutil.copy2(ROOT / filename, target / filename)
-    (target / "python311._pth").write_text(
-        "python311.zip\n.\nLib\\site-packages\n", encoding="utf-8"
+    (target / "python312._pth").write_text(
+        "python312.zip\n.\nLib\\site-packages\n", encoding="utf-8"
     )
     (target / "work").mkdir(exist_ok=True)
     final = output / "Siebla.zip"
