@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 
-from build_pandas_dlc import make_volumes
+from dlc_packer import make_volumes
 
 ROOT = Path(__file__).resolve().parent
 OUTPUT = ROOT / "dlc_dist"
