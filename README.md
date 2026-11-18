@@ -11,7 +11,7 @@ py build_windows.py --ui browser
 # 可选：native、winforms、all
 ```
 
-输出 `dist/Siebla-browser.zip` 等独立压缩包。每个核心 ZIP 不超过 **20,000,000 字节**。Python 官方嵌入式包放在 `runtime/python-3.12.10-embed-amd64.zip`。
+输出 `dist/Siebla-browser.zip` 等独立压缩包。浏览器版核心 ZIP 上限为 **18,000,000 字节**；Native 和 WinForms 仍为 **20,000,000 字节**。Python 官方嵌入式包放在 `runtime/python-3.12.10-embed-amd64.zip`。
 
 Browser 版双击 `Siebla.exe` 或 `启动浏览器版.cmd`，启动本地网页及可关闭的命令行窗口。**关闭命令行窗口就结束服务**；仅关闭浏览器标签页不会结束服务。关闭命令行窗口前应确认保存状态。
 
@@ -19,7 +19,9 @@ Native 版无需浏览器；Windows Forms 版需要兼容的 .NET Framework。�
 
 ## 浏览器版操作
 
-- 单元格支持 **Shift+Enter** 运行当前格、**Tab** 缩进、上移、下移、清空输出及删除。
+- 单元格支持 **Shift+Enter** 运行当前格、自动显示代码行号、**Tab** 缩进或接受补全、上移、下移、清空输出及删除。
+- **动态补全**：根据已运行的 Python 会话变量和对象成员，输入 `df.` 或 `pd.re` 后弹出候选；**Ctrl+空格** 手动触发，方向键选择，Tab/Enter 确认。补全只读取名称和静态属性，不执行用户代码，不能覆盖任意表达式或所有动态属性。
+- **Jupyter 命令快捷键**：编辑代码时按 **Esc** 进入命令模式；此时 **A** 上插单元格、**B** 下插单元格、连续两次 **D** 删除当前单元格。按 **Enter** 返回编辑模式；在编辑模式输入 a/b/d 不触发快捷键。
 - **运行全部** 顺序执行；如有单元格报错则停止，避免后续步骤继续处理错误数据。
 - 输入后自动保存至 `work/Siebla-notebook.json`；刷新网页自动恢复。顶部显示是否已保存，**Ctrl+S** 可手动保存到本地。
 - **导出 JSON** 下载笔记本备份；**导入文件** 支持 Siebla JSON 和常规 IPYNB 中的代码单元格（不保留完整 Jupyter 富输出）。
@@ -60,7 +62,7 @@ py build_dlcs.py --dlc all
 py validate_dlcs.py
 ```
 
-`validate_dlcs.py` 会使用 Siebla 自带的 Python 实际检查三套单独安装及四种组合（共七种）的导入。**源码变更并不等于 Windows 实机测试成功**；请以本机输出为准。
+`validate_dlcs.py` 会使用 Siebla 自带的 Python 实际检查三套单独安装及四种组合（共七种）的导入。**浏览器版18,000,000字节限制和动态补全功能尚需 Windows 实机构建验证；源码变更并不等于 Windows 实机测试成功**；请以本机输出为准。
 
 ## 注意事项
 
