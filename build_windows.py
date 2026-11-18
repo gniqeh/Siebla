@@ -99,10 +99,19 @@ def assemble(mode):
     (target / "work").mkdir(exist_ok=True)
 
     if mode in ("native", "browser"):
-        # CPython's bundled windowed launcher is a real native Windows executable.
-        # Renaming it provides a zero-extra-runtime Siebla.exe; the sitecustomize
-        # bootstrap activates only for that executable name.
-        shutil.copy2(target / "pythonw.exe", target / "Siebla.exe")
+        # Browser uses console Python: closing its console ends the local server.
+        # Native keeps pythonw.exe to avoid an unwanted console window.
+        launcher = "python.exe" if mode == "browser" else "pythonw.exe"
+        shutil.copy2(target / launcher, target / "Siebla.exe")
+        if mode == "browser":
+            (target / "启动浏览器版.cmd").write_text(
+                '@echo off\n'
+                'title Siebla Browser - 关闭此窗口即退出\n'
+                'cd /d "%~dp0"\n'
+                '"%~dp0python.exe" "%~dp0notebook.py"\n'
+                'if errorlevel 1 pause\n',
+                encoding="utf-8",
+            )
         path_config = "python312.zip\n.\nLib\\site-packages\nimport site\n"
     else:
         compiler = winforms_compiler()
