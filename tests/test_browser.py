@@ -66,6 +66,16 @@ class NotebookApiTests(unittest.TestCase):
         self.assertEqual(raised.exception.code, 400)
         self.assertEqual(self.request("/book")["cells"], valid["cells"])
 
+    def test_completion_sees_runtime_variables(self):
+        result = self.request("/run", {"code": "siebla_completion_example = [1, 2, 3]"})
+        self.assertTrue(result["ok"])
+        found = self.request("/complete", {"prefix": "siebla_completion_ex"})
+        self.assertIn("siebla_completion_example", found["items"])
+        members = self.request("/complete", {"prefix": "siebla_completion_example.ap"})
+        self.assertIn("append", members["items"])
+        unsafe = self.request("/complete", {"prefix": "__import__('os')."})
+        self.assertEqual(unsafe["items"], [])
+
     def test_run_uses_shared_engine(self):
         response = self.request("/run", {"code": "browser_test_number=37"})
         self.assertTrue(response["ok"])
