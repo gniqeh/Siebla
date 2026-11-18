@@ -83,60 +83,46 @@ cd dist/Siebla-native
 
 第二条会直接启动窗口，若启动失败可以在 PowerShell 看到 Python 异常。上述诊断只用于开发机，不要求目标电脑操作终端。
 
-## DLC：选择 ZIP，直接加载
+## 通用 DLC v2：一个逻辑 DLC，多个 ZIP 分卷
 
-三个界面均增加 **「加载 DLC」** 按钮。选择一个专门为 Siebla 准备的 ZIP 后，软件会验证解压路径、离线安装到 `extensions/<压缩包文件名>/site-packages/` 并将它加入当前 Python 的模块搜索路径。目标电脑不需要联网或安装 pip。
-
-ZIP 中应直接包含 Python 库目录，或者使用 `site-packages/` 作为顶层目录。例如：
+Siebla 的 DLC 是**一个通用列表**，与具体库无关。比如 Pandas 和 NumPy 共同构成一个 `PandasDLC`，可能因为20 MB限制拆成几个 ZIP：
 
 ```text
-Siebla-Pandas.zip
-├── pandas/
-├── pandas.libs/
-├── numpy/
-├── numpy.libs/
-├── dateutil/
-├── pytz/
-├── tzdata/
-├── six.py
-└── ...（相应依赖和元数据）
+PandasDLC/
+├── PandasDLC_01.zip
+├── PandasDLC_02.zip
+├── PandasDLC_03.zip
+└── PandasDLC_04.zip
 ```
 
-一个 ZIP 应包含本 DLC 的全部依赖；不设计子 DLC 安装页面。名称不能与已经安装的 DLC 重复。安装可信任的 ZIP 后即可尝试 `import pandas as pd`，如遇二进制模块已加载、DLL 冲突等情况，重启 Siebla 再测试。
+在上述文件夹里，**只需在 Siebla 选择任意一个 ZIP**，程序会扫描它所在的文件夹，自动找齐其余分卷，验证各分卷与文件 SHA256 后一次性安装。
 
-在联网构建机生成 Windows 64位 Python 3.12 的 Pandas DLC：
+已加载 DLC 列表按**逻辑名称**显示，而不是按 NumPy、Pandas 或 ZIP 文件显示：
+
+```text
+目前加载的 DLC：
+  PandasDLC （正常）
+  WordDLC   （不完整）
+```
+
+- **正常**：全部分卷完整，数据校验通过并已安装到 `extensions/PandasDLC/`。这不等于模块实际 import 已经经过验证。
+- **不完整**：缺少分卷，不会安装半套 Python 库，窗口会显示具体缺失的 ZIP 文件名。将分卷补齐放到同一个目录后再任选一个加载即可。
+- 系统重启后自动激活已完整安装的 DLC，不需要反复导入。
+- DLC 由 Siebla 自带的 Python 使用，目标机无需互联网、pip 或单独安装 Python。
+
+浏览器版使用由本地 Siebla 进程打开的 **Windows 原生文件选择框**，因此也可以从所选 ZIP 的实际目录自动发现同文件夹的分卷。Native 与 Windows Forms 也使用本地文件选择框。
+
+### 打包 PandasDLC
+
+在能联网、有 Python 和 pip 的构建机执行：
 
 ```powershell
+git pull
 py build_pandas_dlc.py
 ```
 
-输出 `dlc_dist/Siebla-01-NumPy.zip` 和 `dlc_dist/Siebla-02-Pandas.zip`。**每个 ZIP 都强制小于等于20,000,000字节**，Pandas 的其他依赖放在第二包。离线电脑上依次点击两次「加载 DLC」，先选 NumPy，再选 Pandas。无需分卷功能，也无需手动合并压缩包。不要将不可信的 ZIP 导入办公电脑；Python 扩展含可执行代码和 DLL。
+脚本下载针对 Windows x64 / Python 3.12 的 Pandas、NumPy 和其他依赖，制作一个 `PandasDLC`，自动拆成 `PandasDLC_01.zip`、`PandasDLC_02.zip` 等。**每个 ZIP 独立不超过20,000,000字节**；分卷数量由实际依赖大小决定，不能预先假定只有两个。把 `dlc_dist/` 中这些同名前缀的分卷全部放在一起交付即可。
 
-目前已提交功能源码，但尚未完成 Windows 10 上三种界面逐一构建和实机安装测试。
+这是 Siebla 自定义的多卷 DLC ZIP 格式，**不是传统 ZIP 分卷**；不要用常规分卷压缩软件生成 `_01.zip` 文件后期待它被自动识别。必须由对应打包器生成带 `siebla-dlc.json` 清单的格式。
 
-
-## Browser 版退出方式
-
-浏览器版启动后会同时打开 **本地网页** 和 **Siebla Browser 命令行窗口**。关闭该命令行窗口，即终止对应 Python 本地服务，解除对程序文件的占用。不要把关闭网页标签误认为退出服务。还可以运行 `启动浏览器版.cmd`，它同样使用前台 Python 服务进程。关闭窗口属于强制终止，退出前请先在网页里保存笔记本。
-
-
-### Pandas DLC 单包超20 MB时
-
-当前构建器不再把 NumPy 与 Pandas 合并成一个大 ZIP，而是自动拆成两个独立小包，并分别检查20 MB上限：
-
-```powershell
-py build_pandas_dlc.py
-```
-
-在 Siebla 中点「加载 DLC」两次，依次选择 `Siebla-01-NumPy.zip` 和 `Siebla-02-Pandas.zip`。导入完成后测试 `import numpy as np; import pandas as pd`，必要时重启 Siebla。这个机制保持「选择一个 ZIP → 导入」，不需要额外的层级菜单。构建脚本尚未在 Windows 实机跑通，最终容量和可导入性以实际构建结果为准。
-
-
-## 查看已加载的 DLC
-
-Native、Windows Forms、Browser 三个版本都有 **「已加载 DLC」** 按钮。点击后会列出已经导入到 `extensions/` 的 ZIP 名称和状态。这里的“已安装”表示文件已经成功放入扩展目录，并**不等于二进制模块已通过实际 import 测试**。
-
-- 只加载 `Siebla-01-NumPy.zip`：NumPy 文件已安装，`import numpy` 可以尝试，但 `import pandas` 不可用。
-- 只加载 `Siebla-02-Pandas.zip`：列表提示“缺少 NumPy DLC，Pandas 暂不可用”；运行 `import pandas` 通常报缺少 NumPy 的错误。
-- 两个都加载：列表提示依赖包均已检测到，可以运行 `import numpy as np; import pandas as pd` 作最终验证。扩展包与 Python/Windows 架构不兼容时依然可能导入失败。
-
-DLC 扩展目录在启动时自动加入模块搜索路径，安装之后不需要再点一次加载；升级或替换整个 Siebla 文件夹时请保留 `extensions/`。
+出于安全考虑，只导入可信来源的 DLC：扩展包能提供可执行 Python 代码和 Windows DLL。当前源码已提交，但 Windows 三界面与实际 Pandas DLL 导入尚待实机验收。
