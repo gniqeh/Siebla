@@ -57,6 +57,20 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         origin = f"http://127.0.0.1:{self.server.server_port}"
+        if self.path == "/dlc-select":
+            if (self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
+                    or self.headers.get("Origin") != origin
+                    or self.headers.get("X-Notebook-Token") != TOKEN):
+                return self.reply(403, {"error": "Forbidden"})
+            try:
+                from dlc import choose_zip_windows, install
+                selected = choose_zip_windows()
+                if not selected:
+                    return self.reply(200, {"cancelled": True})
+                message = install(selected)
+                return self.reply(200, {"message": message, "installed": dlc.list_installed()})
+            except Exception as exc:
+                return self.reply(400, {"error": str(exc)})
         if self.path == "/dlc":
             if (self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
                     or self.headers.get("Origin") != origin
