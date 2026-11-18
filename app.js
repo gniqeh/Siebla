@@ -1,144 +1,310 @@
 'use strict';
 const token = new URLSearchParams(location.search).get('token');
-const box = document.getElementById('cells');
-let serial = 0, busy = false;
-function append(code='') {
-  const id = ++serial, cell = document.createElement('div'); cell.className = 'cell';
-  const prompt = document.createElement('div'); prompt.className='prompt';prompt.textContent='In ['+id+']';
-  const panel = document.createElement('div');panel.className='panel';
-  const edit = document.createElement('textarea');edit.value=code;edit.spellcheck=false;
-  const toolbar=document.createElement('div');toolbar.className='controls';
-  const run=document.createElement('button');run.textContent='▶ 运行';
-  const del=document.createElement('button');del.textContent='删除';
-  const status=document.createElement('span');status.className='status';
-  const output=document.createElement('div');output.className='output';
-  run.onclick=()=>execute(cell);
-  del.onclick=()=>cell.remove();
-  edit.addEventListener('keydown',e=>{
-    if(e.key==='Enter'&&e.shiftKey){
-      e.preventDefault();
-      execute(cell).then(()=>{
-        const next=cell.nextElementSibling;
-        (next||append()).querySelector('textarea').focus();
-      });
+const cellsBox = document.getElementById('cells');
+const saveState = document.getElementById('save-state');
+const runState = document.getElementById('run-state');
+const infoDialog = document.getElementById('info-dialog');
+let busy = false;
+let dirty = false;
+let serial = 0;
+let autoTimer = null;
+let saving = Promise.resolve();
+
+async function api(path, options={}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: {'X-Notebook-Token':token, ...(options.headers||{})}
+  });
+  const result = await response.json();
+  if (!response.ok) throw Error(result.error || '操作失败');
+  return result;
+}
+
+function updateNumbers() {
+  [...cellsBox.children].forEach((cell,i) => {
+    cell.querySelector('.prompt').textContent='In ['+(i+1)+']';
+  });
+}
+
+function markDirty() {
+  dirty = true;
+  saveState.textContent = '尚未保存的修改';
+  saveState.className = 'dirty';
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(() => saveLocal(true), 900);
+}
+
+function append(code='', output='', focus=false) {
+  const cell = document.createElement('section');
+  cell.className = 'cell';
+  cell.dataset.id = String(++serial);
+  const prompt = document.createElement('div');
+  prompt.className = 'prompt';
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  const editor = document.createElement('textarea');
+  editor.className='editor';
+  editor.value=code;
+  editor.spellcheck=false;
+  editor.setAttribute('aria-label','Python 代码');
+  const controls = document.createElement('div');
+  controls.className='controls';
+  const status=document.createElement('span');
+  status.className='cell-status';
+  const spacer=document.createElement('span');
+  spacer.className='spacer';
+  const outputBox=document.createElement('div');
+  outputBox.className='output';
+  outputBox.textContent=output;
+  function action(label, callback, className='') {
+    const button=document.createElement('button');
+    button.textContent=label;
+    if(className)button.className=className;
+    button.onclick=callback;
+    return button;
+  }
+  const run=action('▶ 运行',()=>execute(cell));
+  const up=action('↑ 上移',()=>{
+    const previous=cell.previousElementSibling;
+    if(previous){cellsBox.insertBefore(cell,previous);updateNumbers();markDirty();}
+  });
+  const down=action('↓ 下移',()=>{
+    const next=cell.nextElementSibling;
+    if(next){cellsBox.insertBefore(next,cell);updateNumbers();markDirty();}
+  });
+  const clear=action('清空输出',()=>{
+    outputBox.textContent='';outputBox.className='output';status.textContent='';markDirty();
+  });
+  const del=action('删除',()=>{
+    if(cellsBox.children.length===1 && (editor.value.trim() || outputBox.textContent.trim())) {
+      if(!confirm('删除最后一个单元格？'))return;
     }
-    if(e.key==='Tab'){
-      e.preventDefault();
-      edit.setRangeText('    ',edit.selectionStart,edit.selectionEnd,'end');
+    cell.remove();
+    if(!cellsBox.children.length)append('', '', true);
+    updateNumbers();markDirty();
+  },'danger');
+  controls.append(run,up,down,clear,spacer,status,del);
+  editor.addEventListener('input',markDirty);
+  editor.addEventListener('keydown',event=>{
+    if(event.key==='Enter' && event.shiftKey){
+      event.preventDefault();
+      execute(cell).then(()=>{
+        const next=cell.nextElementSibling || append('','');
+        next.querySelector('textarea').focus();
+      });
+    }else if(event.key==='Tab'){
+      event.preventDefault();
+      editor.setRangeText('    ',editor.selectionStart,editor.selectionEnd,'end');
+      markDirty();
     }
   });
-  toolbar.append(run,del,status);
-  panel.append(edit,toolbar,output);cell.append(prompt,panel);box.append(cell);return cell;
+  panel.append(editor,controls,outputBox);
+  cell.append(prompt,panel);
+  cellsBox.append(cell);
+  updateNumbers();
+  if(focus)editor.focus();
+  return cell;
 }
-async function execute(cell){
-  if(busy)return;
-  busy=true;
-  const status=cell.querySelector('.status'),output=cell.querySelector('.output');
-  status.textContent='运行中…';
+
+function collect(){
+  return [...cellsBox.children].map(cell=>({
+    code:cell.querySelector('.editor').value,
+    output:cell.querySelector('.output').textContent
+  }));
+}
+
+async function saveLocal(auto=false){
+  clearTimeout(autoTimer);
+  if(busy && auto) {
+    autoTimer=setTimeout(()=>saveLocal(true),900);
+    return;
+  }
+  const snapshot=JSON.stringify({format:'siebla-notebook-v1',cells:collect()});
+  const previous=saving;
+  saving=previous.catch(()=>{}).then(async()=>{
+    const result=await api('/book',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:snapshot
+    });
+    return result;
+  });
   try{
-    const response=await fetch('/run',{method:'POST',headers:{'Content-Type':'application/json','X-Notebook-Token':token},body:JSON.stringify({code:cell.querySelector('textarea').value})});
-    const result=await response.json();
-    if(!response.ok)throw new Error(result.error||'请求失败');
+    await saving;
+    const current=JSON.stringify({format:'siebla-notebook-v1',cells:collect()});
+    if(current===snapshot){
+      dirty=false;saveState.textContent='已保存到本地 work 文件夹';saveState.className='ok';
+    }else{
+      dirty=true;
+      markDirty();
+    }
+  }catch(error){
+    dirty=true;saveState.textContent='保存失败：'+error.message;saveState.className='error';
+    if(!auto)showInfo('保存失败',error.message);
+  }
+}
+
+async function execute(cell){
+  if(busy)return false;
+  busy=true;
+  const status=cell.querySelector('.cell-status');
+  const output=cell.querySelector('.output');
+  status.textContent='运行中…';
+  runState.textContent='正在运行，请勿重复点击';
+  const all=document.querySelectorAll('.controls button,#all');
+  all.forEach(button=>button.disabled=true);
+  try {
+    const result=await api('/run',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:cell.querySelector('.editor').value})
+    });
     output.textContent=(result.stdout||'')+(result.stderr||'');
     output.className='output'+(result.ok?'':' bad');
-    status.textContent=result.ok?'完成':'错误';
+    status.textContent=result.ok?'成功':'出错';
+    markDirty();
+    return result.ok;
+  } catch(error){
+    output.textContent=error.message;output.className='output bad';
+    status.textContent='失败';
+    markDirty();
+    return false;
+  } finally {
+    busy=false;
+    all.forEach(button=>button.disabled=false);
+    runState.textContent='Shift+Enter 运行当前格 · Ctrl+S 保存';
+  }
+}
+
+async function runAll(){
+  if(busy)return;
+  const all=[...cellsBox.children];
+  const button=document.getElementById('all');
+  button.disabled=true;
+  try{
+    for(let i=0;i<all.length;i++){
+      runState.textContent='运行全部 '+(i+1)+' / '+all.length;
+      const success=await execute(all[i]);
+      if(!success){
+        runState.textContent='第 '+(i+1)+' 个单元格执行失败，已停止';
+        await saveLocal();
+        return;
+      }
+    }
+    runState.textContent='全部运行完成';
+    await saveLocal();
+  }finally{button.disabled=false;}
+}
+
+function exportBook(){
+  const blob=new Blob([JSON.stringify({
+    format:'siebla-notebook-v1',cells:collect()
+  },null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;link.download='Siebla-notebook.json';link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function showInfo(title,text){
+  document.getElementById('info-title').textContent=title;
+  document.getElementById('info-content').textContent=text;
+  infoDialog.showModal();
+}
+
+document.getElementById('info-close').onclick=()=>infoDialog.close();
+document.getElementById('info-copy').onclick=async()=>{
+  const content=document.getElementById('info-content').textContent;
+  const button=document.getElementById('info-copy');
+  try{
+    await navigator.clipboard.writeText(content);
+    button.textContent='已复制';
+    setTimeout(()=>button.textContent='复制全部',1300);
   }catch(error){
-    output.textContent=String(error);output.className='output bad';status.textContent='出错';
-  }finally{busy=false;}
-}
-function collect(){return [...box.children].map(cell=>({code:cell.querySelector('textarea').value,output:cell.querySelector('.output').textContent}));}
-function save(){
-  const blob=new Blob([JSON.stringify({format:'siebla-notebook-v1',cells:collect()},null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='我的笔记本.json';a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-}
-document.getElementById('add').onclick=()=>append().querySelector('textarea').focus();
-document.getElementById('all').onclick=async()=>{for(const cell of [...box.children])await execute(cell);};
-document.getElementById('save').onclick=save;
+    const selection=window.getSelection();
+    const range=document.createRange();
+    range.selectNodeContents(document.getElementById('info-content'));
+    selection.removeAllRanges();selection.addRange(range);
+    button.textContent='已选中，请按 Ctrl+C';
+  }
+};
+document.getElementById('add').onclick=()=>{append('', '', true);markDirty();};
+document.getElementById('add-bottom').onclick=()=>{append('', '', true);markDirty();};
+document.getElementById('all').onclick=runAll;
+document.getElementById('save').onclick=()=>saveLocal();
+document.getElementById('export').onclick=exportBook;
 document.getElementById('load').onclick=()=>document.getElementById('file').click();
-document.getElementById('file').onchange=async e=>{
-  const file=e.target.files[0];if(!file)return;
+document.getElementById('file').onchange=async event=>{
+  const file=event.target.files[0];
+  if(!file)return;
   try{
     const data=JSON.parse(await file.text());
-    let cells;
-    if(data.format==='siebla-notebook-v1')cells=data.cells;
-    else if(Array.isArray(data.cells))cells=data.cells.filter(x=>x.cell_type==='code').map(x=>Array.isArray(x.source)?x.source.join(''):x.source);
-    else throw Error('不支持的格式');
-    if(!Array.isArray(cells)||cells.length>1000)throw Error('无效单元格');
-    box.replaceChildren();
-    for(const entry of cells){const code=typeof entry==='string'?entry:String(entry.code||'');const cell=append(code);if(entry&&typeof entry==='object'){cell.querySelector('.output').textContent=String(entry.output||'');}}
-    if(!cells.length)append();
-  }catch(error){alert('打开失败：'+error.message);}
-  e.target.value='';
+    let entries;
+    if(data.format==='siebla-notebook-v1' && Array.isArray(data.cells))entries=data.cells;
+    else if(Array.isArray(data.cells))entries=data.cells.filter(c=>c.cell_type==='code').map(c=>({
+      code:Array.isArray(c.source)?c.source.join(''):String(c.source||''),
+      output:''
+    }));
+    else throw Error('不支持的文件格式');
+    if(entries.length>1000)throw Error('单元格数量过多');
+    if(dirty && !confirm('导入文件会替换当前笔记本，是否继续？'))return;
+    cellsBox.replaceChildren();
+    for(const entry of entries)append(String(entry.code||''),String(entry.output||''));
+    if(!entries.length)append();
+    markDirty();await saveLocal();
+  }catch(error){showInfo('导入失败',error.message);}
+  finally{event.target.value='';}
 };
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();}});
-append('import sys\nprint("Python", sys.version.split()[0])\nprint("解释器：", sys.executable)');
+document.addEventListener('keydown',event=>{
+  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){
+    event.preventDefault();saveLocal();
+  }
+});
+window.addEventListener('beforeunload',event=>{
+  if(dirty){event.preventDefault();event.returnValue='';}
+});
 
 document.getElementById('dlc').onclick=async()=>{
   const button=document.getElementById('dlc');
-  button.disabled=true;
-  const old=button.textContent;
-  button.textContent='选择 DLC…';
+  button.disabled=true;button.textContent='选择 DLC…';
   try{
-    const response=await fetch('/dlc-select',{
-      method:'POST',
-      headers:{'X-Notebook-Token':token, 'Content-Type':'application/json'},
-      body:'{}'
+    const data=await api('/dlc-select',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:'{}'
     });
-    const data=await response.json();
-    if(!response.ok)throw Error(data.error||'加载失败');
-    if(!data.cancelled)alert(data.message||'DLC 加载完成');
-  }catch(error){alert('DLC 加载失败：'+String(error));}
-  finally{button.disabled=false;button.textContent=old;}
+    if(!data.cancelled)showInfo('DLC 导入结果',data.message||'导入完成');
+  }catch(error){showInfo('DLC 导入失败',error.message);}
+  finally{button.disabled=false;button.textContent='加载 DLC';}
 };
-
 document.getElementById('dlc-list').onclick=async()=>{
   try{
-    const response=await fetch('/dlc-status',{headers:{'X-Notebook-Token':token}});
-    const data=await response.json();
-    if(!response.ok)throw Error(data.error||'查询失败');
+    const data=await api('/dlc-status');
     const items=data.installed||[];
-    const lines=items.length?items.map((item,i)=>
-      (i+1)+'. '+item.name+'（'+item.status+'）\n   '+(item.detail||'')):['尚未加载任何 DLC'];
-    alert('已加载 DLC\n\n'+lines.join('\n\n'));
-  }catch(error){alert('查询 DLC 失败：'+String(error));}
+    showInfo('目前加载的 DLC',items.length?items.map(x=>
+      x.name+'（'+x.status+'）'+(x.status==='正常'?'':'\n'+(x.detail||''))
+    ).join('\n\n'):'尚未加载任何 DLC');
+  }catch(error){showInfo('查询失败',error.message);}
 };
-
 document.getElementById('ai-capabilities').onclick=async()=>{
   try{
-    const response=await fetch('/capabilities',{headers:{'X-Notebook-Token':token}});
-    const data=await response.json();
-    if(!response.ok)throw Error(data.error||'无法生成环境说明');
-    const dialog=document.createElement('dialog');
-    dialog.style.cssText='width:min(760px,92vw);max-height:86vh;border:1px solid #bbb;border-radius:10px;padding:20px;';
-    const heading=document.createElement('h3');
-    heading.textContent='告诉大模型我能干啥';
-    const tip=document.createElement('p');
-    tip.textContent='这是按当前 Siebla 环境生成的说明，复制后粘贴给大模型。';
-    const text=document.createElement('textarea');
-    text.readOnly=true;
-    text.value=data.text;
-    text.style.cssText='width:100%;height:55vh;box-sizing:border-box;resize:vertical;';
-    const buttons=document.createElement('div');
-    buttons.style.cssText='display:flex;gap:10px;justify-content:flex-end;margin-top:12px;';
-    const copy=document.createElement('button');
-    copy.textContent='复制全部';
-    copy.onclick=async()=>{
-      try{
-        await navigator.clipboard.writeText(text.value);
-        copy.textContent='已复制';
-      }catch(error){
-        text.focus();text.select();
-        copy.textContent='请按 Ctrl+C 复制';
-      }
-    };
-    const close=document.createElement('button');
-    close.textContent='关闭';
-    close.onclick=()=>dialog.close();
-    buttons.append(copy,close);
-    dialog.append(heading,tip,text,buttons);
-    dialog.addEventListener('close',()=>dialog.remove());
-    document.body.append(dialog);
-    dialog.showModal();
-  }catch(error){alert('生成说明失败：'+String(error));}
+    const data=await api('/capabilities');
+    showInfo('当前 Python 环境',data.text);
+  }catch(error){showInfo('读取环境失败',error.message);}
 };
+
+async function initialize(){
+  try{
+    const data=await api('/book');
+    for(const entry of (data.cells||[])){
+      append(String(entry.code||''),String(entry.output||''));
+    }
+    if(!cellsBox.children.length)append('import sys\nprint("Python", sys.version.split()[0])');
+    saveState.textContent=data.saved?'已从本地恢复笔记本':'新笔记本 · 自动保存已开启';
+    saveState.className='ok';
+  }catch(error){
+    append('import sys\nprint(sys.version)');
+    saveState.textContent='恢复失败：'+error.message;
+    saveState.className='error';
+    showInfo('本地笔记本恢复失败',error.message);
+  }
+}
+initialize();
