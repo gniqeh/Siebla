@@ -73,6 +73,43 @@ VK_RETURN, VK_SHIFT = 13, 16
 GWL_WNDPROC = -4
 SW_SHOW = 5
 
+class OPENFILENAMEW(C.Structure):
+    _fields_ = [
+        ("lStructSize", W.DWORD), ("hwndOwner", W.HWND), ("hInstance", W.HINSTANCE),
+        ("lpstrFilter", W.LPCWSTR), ("lpstrCustomFilter", W.LPWSTR),
+        ("nMaxCustFilter", W.DWORD), ("nFilterIndex", W.DWORD),
+        ("lpstrFile", W.LPWSTR), ("nMaxFile", W.DWORD),
+        ("lpstrFileTitle", W.LPWSTR), ("nMaxFileTitle", W.DWORD),
+        ("lpstrInitialDir", W.LPCWSTR), ("lpstrTitle", W.LPCWSTR),
+        ("Flags", W.DWORD), ("nFileOffset", W.WORD), ("nFileExtension", W.WORD),
+        ("lpstrDefExt", W.LPCWSTR), ("lCustData", W.LPARAM),
+        ("lpfnHook", C.c_void_p), ("lpTemplateName", W.LPCWSTR),
+        ("pvReserved", C.c_void_p), ("dwReserved", W.DWORD), ("FlagsEx", W.DWORD)
+    ]
+
+common_dialog = C.WinDLL("comdlg32", use_last_error=True)
+common_dialog.GetOpenFileNameW.restype = W.BOOL
+common_dialog.GetOpenFileNameW.argtypes = [C.POINTER(OPENFILENAMEW)]
+
+def load_dlc():
+    file_buffer = C.create_unicode_buffer(32768)
+    dlg = OPENFILENAMEW()
+    dlg.lStructSize = C.sizeof(dlg)
+    dlg.lpstrFilter = "Siebla DLC ZIP (*.zip)\\0*.zip\\0所有文件 (*.*)\\0*.*\\0\\0".replace("\\0", "\0")
+    dlg.lpstrFile = C.cast(file_buffer, W.LPWSTR)
+    dlg.nMaxFile = len(file_buffer)
+    dlg.lpstrTitle = "选择 Siebla DLC 压缩包"
+    dlg.Flags = 0x00001000 | 0x00000800  # OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST
+    if not common_dialog.GetOpenFileNameW(C.byref(dlg)):
+        return
+    try:
+        from dlc import install
+        msg = install(file_buffer.value)
+        set_value(controls["status"], msg)
+        u.MessageBoxW(None, msg, "Siebla DLC", 0x40)
+    except Exception as exc:
+        u.MessageBoxW(None, str(exc), "DLC 导入失败", 0x10)
+
 cells = [{"code": 'import sys\nprint("Python", sys.version.split()[0])\nprint("解释器", sys.executable)', "output": ""}]
 selected = 0
 controls = {}
@@ -163,6 +200,7 @@ def window_proc(hwnd, msg, wparam, lparam):
         elif ident == 102: add_cell()
         elif ident == 103: save_book()
         elif ident == 104: open_book()
+        elif ident == 108: load_dlc()
         return 0
     if msg == WM_SIZE and controls:
         rect = W.RECT()
@@ -173,7 +211,8 @@ def window_proc(hwnd, msg, wparam, lparam):
         right_x = 152
         content_width = width - right_x - 12
         for key, x, w in (("run", right_x, 85), ("add", right_x+90, 85),
-                          ("save", right_x+180, 85), ("open", right_x+270, 85)):
+                          ("save", right_x+180, 85), ("open", right_x+270, 85),
+                          ("dlc", right_x+360, 95)):
             u.MoveWindow(controls[key], x, 12, w, 32, True)
         code_height = max(120, (height-105)//2)
         u.MoveWindow(controls["code"], right_x, 53, content_width, code_height, True)
@@ -220,6 +259,7 @@ def main():
     controls["add"] = make("BUTTON", "＋ 新建", 102)
     controls["save"] = make("BUTTON", "保存", 103)
     controls["open"] = make("BUTTON", "打开", 104)
+    controls["dlc"] = make("BUTTON", "加载 DLC", 108)
     controls["status"] = make("STATIC", "", 107)
     previous_edit_proc = u.SetWindowLongPtrW(controls["code"], GWL_WNDPROC,
                                               C.cast(edit_proc, C.c_void_p))
