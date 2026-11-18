@@ -1,53 +1,68 @@
 # Siebla
 
-**Windows 64位、Python 3.12、离线便携式单元格笔记本。**
+**离线 Python 办公笔记本构建仓库**。只做一件事：把 Python 3.12.10、Excel 基础库和指定的窗口界面打包成可在 Windows 10 x64 上解压运行的 ZIP。
 
-这个仓库的工作只有一件事：把本仓库源码和自带 Python 运行时打包成 **`dist/Siebla.zip`**，解压后可在无网络、未安装 Python 的 Windows 电脑上运行。
+## 选择界面（三选一）
 
-## 仓库结构
+在**联网的 Windows 64位构建机**中：
+
+```powershell
+py build_windows.py --ui native
+py build_windows.py --ui winforms
+py build_windows.py --ui browser
+```
+
+不带 `--ui` 且在终端运行时，会出现选择菜单；默认 `native`。
+
+| 参数 | 界面 | 运行电脑需要 |
+| --- | --- | --- |
+| `native` | Win32 原生窗口，代码单元格与输出区，无外部浏览器 | 不需要 .NET 或额外 GUI 框架 |
+| `winforms` | Windows Forms 独立窗口，支持单元格列表、保存/打开 | 需要兼容的 .NET Framework（多数 Win10 有，但应检测） |
+| `browser` | 本地服务及默认浏览器中的 Notebook | 需要兼容的浏览器 |
+
+三种模式都自带 CPython **3.12.10**、`openpyxl==3.1.5`、`et_xmlfile==2.0.0`，最终各自打包，不把三套前端塞入同一个 ZIP。
+
+构建结束后分别生成：
 
 ```text
-Siebla/
-├── runtime/
-│   └── python-3.12.10-embed-amd64.zip    # 须提交的官方 Python 运行时（原 ZIP）
-├── build_windows.py
-├── launcher.cs                    # 构建 Siebla.exe 的窗口启动器
-├── notebook.py
-├── index.html
-├── app.js
-├── style.css
-├── 启动笔记本.cmd
-└── .github/workflows/build.yml
+dist/Siebla-native.zip
+dist/Siebla-winforms.zip
+dist/Siebla-browser.zip
 ```
 
-**注意：目前仓库中的 `runtime/` 仅有说明文件，Python 二进制 ZIP 尚未上传。** 构建脚本会优先读取 `runtime/python-3.12.10-embed-amd64.zip`，不再自动从 Python 官网下载；为完整的离线源码构建，须将该 ZIP 提交到仓库。可以在开发机上用：
+**每次构建只生成一个 ZIP**，严格检查单包不超过 **20,000,000 字节**。压缩包内有 `Siebla.exe`，目标电脑无需安装 Python，也无需操作 CMD。
 
-```powershell
-mkdir runtime -Force
-Copy-Item "你下载好的python-3.12.10-embed-amd64.zip" "runtime/python-3.12.10-embed-amd64.zip"
-git add runtime/python-3.12.10-embed-amd64.zip
-git commit -m "Vendor Python 3.12.10 embedded runtime"
-git push
+## 核心使用
+
+解压对应 ZIP，在解压目录中双击 `Siebla.exe`。可以写 Python 代码并执行单元格，单元格共享变量，显示文本输出和报错，使用内置 OpenPyXL 处理 XLSX。
+
+Native 原生版为了最小体积，使用“单元格列表 + 当前单元格编辑/输出”的布局，`Shift+Enter` 运行；通过“保存/打开”按钮使用固定文件 `work/Siebla-notebook.json`。
+
+Windows Forms 版采用可滚动的多个单元格窗口，支持 `Shift+Enter` 和 JSON 文件对话框。Browser 版采用网页多单元格布局，浏览器保存 JSON 文件。笔记本格式统一为 `siebla-notebook-v1`。
+
+**这不是完整 Jupyter**：没有 Jupyter kernel、科学计算全家桶、自动代码补全或富图表输出。
+
+## 仓库运行时
+
+官方 CPython 嵌入式 ZIP 已放在：
+
+```text
+runtime/python-3.12.10-embed-amd64.zip
 ```
 
-官方下载源：<https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip>
+构建直接读取此文件，不会从 Python 官网重复下载。OpenPyXL 的依赖 wheel 会缓存在 `downloads/wheels/`；首次构建若无缓存，构建机仍需联网。目标电脑运行时完全不需要联网。
 
-仓库中不应提交打包后的 `dist/`。如果临时不提交运行时，也可以将该 ZIP 放入本地 `downloads/` 作为备用缓存。
+## 构建与兼容限制
 
-## 构建
+- 构建环境：Windows 64位、可运行的 Python 与 pip。
+- `native` 和 `browser` 不需要 C# 编译器。直接使用官方 `pythonw.exe` 的副本作为启动程序，利用 Python 自带启动模块打开选择的界面。
+- `winforms` 构建机需要 `.NET Framework` 的 C# 编译器；目标电脑需要兼容的 .NET Framework，但不一定需要额外安装。
+- Python 嵌入式版仍可能需要特定 Microsoft C Runtime 组件，是否完全免安装必须在干净的 Win10 x64 机器上验证。
+- 目标电脑的单位软件白名单和未签名 EXE 提示依然可能阻止程序运行。
+- 目前已完成源码提交，但尚未完成 Windows 实机端到端验证。GitHub Actions 如果受账号账单限制，也无法自动构建。
 
-在 Windows 64位电脑上，安装有 Python 和 pip 的构建环境中运行：
+## GitHub Actions
 
-```powershell
-py build_windows.py
-```
+在 Actions → Build Siebla → Run workflow 中选择 `native`、`winforms` 或 `browser`。但若 GitHub Actions 因账号问题不能启动，仍可使用本机命令构建。
 
-或者在 GitHub Actions 里运行 **Build Siebla**。依赖版本锁定为 `openpyxl==3.1.5`、`et_xmlfile==2.0.0`，目前 wheel 仍需首次下载并缓存在 `downloads/wheels/`，**所以仅将 Python 放进源码，还不等于完全离线构建**。发布给用户的 `Siebla.zip` 则无需联网。
-
-构建时用 Windows 自带的 .NET Framework C# 编译器生成 `Siebla.exe` 启动器。用户只需双击 `Siebla.exe`，即可自动打开系统浏览器中的本地 Notebook 页面，无须运行 `.cmd`。最终交付包内不包含 `.cmd`。构建机需有 .NET Framework C# 编译器，运行机通常需具备对应 .NET Framework。\n\n构建产物：`dist/Siebla.zip`。构建脚本强制压缩包不超过 **20,000,000 字节**。
-
-## 使用
-
-解压 `Siebla.zip`，双击 `Siebla.exe`（无命令行窗口）。浏览器打开本地 Notebook 界面。按 **Shift+Enter** 执行当前单元格，共享变量并立即展示文本结果。工作目录为 `work/`。
-
-这个工具并非完整 Jupyter。它支持文本结果、异常和基础 XLSX 操作，不提供完整 Jupyter 内核、Excel 公式计算引擎或富交互输出。只执行可信任的代码。
+仓库源码不包含任何单位的工作数据。不要把办公文件提交到公开仓库。
