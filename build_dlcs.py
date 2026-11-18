@@ -25,7 +25,8 @@ SUITES = {
         "name": "Siebla-Excel",
         "version": "1.0",
         "requirements": [
-            "pandas==2.2.3", NUMPY, "openpyxl==3.1.5",
+            # openpyxl is already in Siebla Core; do not ship it twice.
+            "pandas==2.2.3", NUMPY,
             "XlsxWriter", "rapidfuzz", "pyxlsb",
         ],
         "modules": ("pandas", "numpy", "openpyxl", "xlsxwriter", "rapidfuzz", "pyxlsb"),
