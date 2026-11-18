@@ -9,7 +9,7 @@ class CapabilityDescriptionTests(unittest.TestCase):
     def test_no_dlc_is_not_advertised(self):
         with patch.object(capabilities, "list_installed", return_value=[]):
             description = capabilities.describe_environment()
-        self.assertIn("未安装任何 DLC", description)
+        self.assertIn("DLC：无。", description)
         self.assertNotIn("可尝试的任务：PDF", description)
         self.assertNotIn("可尝试的任务：XLSX", description)
 
@@ -20,10 +20,10 @@ class CapabilityDescriptionTests(unittest.TestCase):
         }]
         with patch.object(capabilities, "list_installed", return_value=installed):
             description = capabilities.describe_environment()
-        self.assertIn("Siebla-Excel：正常", description)
+        self.assertIn("Siebla-Excel（已安装）", description)
         self.assertIn("pandas", description)
-        self.assertNotIn("Siebla-PDF：正常", description)
-        self.assertNotIn("Siebla-Media：正常", description)
+        self.assertNotIn("Siebla-PDF", description)
+        self.assertNotIn("Siebla-Media", description)
 
     def test_incomplete_dlc_is_not_usable(self):
         installed = [{
@@ -32,8 +32,8 @@ class CapabilityDescriptionTests(unittest.TestCase):
         }]
         with patch.object(capabilities, "list_installed", return_value=installed):
             description = capabilities.describe_environment()
-        self.assertIn("Siebla-PDF：不完整", description)
-        self.assertIn("不要依赖此 DLC", description)
+        self.assertIn("Siebla-PDF（不完整，不可用）", description)
+        self.assertIn("不能联网或 pip 安装新库", description)
         self.assertNotIn("可尝试的任务：PDF", description)
 
 
