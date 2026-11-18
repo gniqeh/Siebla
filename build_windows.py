@@ -80,11 +80,30 @@ def build():
             z.extractall(site)
     for info in site.glob("*.dist-info"):
         shutil.rmtree(info)
-    for filename in ("notebook.py", "index.html", "app.js", "style.css", "启动笔记本.cmd"):
+    for filename in ("notebook.py", "index.html", "app.js", "style.css"):
         shutil.copy2(ROOT / filename, target / filename)
     (target / "python312._pth").write_text(
         "python312.zip\n.\nLib\\site-packages\n", encoding="utf-8"
     )
+    # Compile a tiny windowed launcher: double-click Siebla.exe, no .cmd or console.
+    windows = pathlib.Path(__import__("os").environ.get("SystemRoot", r"C:\\Windows"))
+    compiler_paths = [
+        windows / "Microsoft.NET" / "Framework64" / "v4.0.30319" / "csc.exe",
+        windows / "Microsoft.NET" / "Framework" / "v4.0.30319" / "csc.exe",
+    ]
+    compiler = next((p for p in compiler_paths if p.is_file()), None)
+    if compiler is None:
+        raise RuntimeError(
+            "Windows .NET Framework C# compiler (csc.exe) is required to build Siebla.exe"
+        )
+    subprocess.check_call([
+        str(compiler), "/nologo", "/target:winexe",
+        "/reference:System.Windows.Forms.dll",
+        "/out:" + str(target / "Siebla.exe"),
+        str(ROOT / "launcher.cs"),
+    ])
+    if not (target / "Siebla.exe").is_file():
+        raise RuntimeError("Siebla.exe was not generated")
     (target / "work").mkdir(exist_ok=True)
     final = output / "Siebla.zip"
     with zipfile.ZipFile(final, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
