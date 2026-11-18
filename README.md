@@ -167,3 +167,16 @@ dlc_dist/
 每个 ZIP 的硬上限是 **20,000,000 字节**。每个 DLC 的分卷数量由实际文件体积决定。**每个套件的所有分卷必须放在同一文件夹**；选中任意一个分卷即可自动查找、校验并导入同一套件的其余分卷。不同套件则按需分别加载，各自独立记录「正常 / 不完整」状态。
 
 构建机可能需要联网并安装 pip；**目标电脑始终不需要联网、额外安装 Python 或 pip**。目前仅提交了源码，三个套件所有组合的 Windows 实机导入和二进制 DLL 兼容性仍需要验证。
+
+
+### 独立性与任意组合验证（构建机上执行）
+
+```powershell
+py build_windows.py --ui browser
+py build_dlcs.py --dlc all
+py validate_dlcs.py
+```
+
+`validate_dlcs.py` 会使用 **Siebla 自带的 Python 3.12** 在临时目录逐个测试 7 种安装组合：仅 Excel、仅 PDF、仅 Media、Excel+PDF、Excel+Media、PDF+Media，以及全部安装。每次从一个 DLC 的**最后一个分卷**发起安装，检查安装状态和套件内模块的实际 `import`，任意组合失败则返回非零退出码。此测试在 Windows 构建机执行，生成的 DLC ZIP 本身不包含测试环境。
+
+旧命令 `py build_pandas_dlc.py` 现在相当于构建 `Siebla-Excel`。推荐统一使用 `py build_dlcs.py --dlc ...`。
