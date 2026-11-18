@@ -38,6 +38,117 @@ function markDirty() {
   autoTimer = setTimeout(() => saveLocal(true), 900);
 }
 
+function selectCell(cell, command=false) {
+  if(selectedCell)selectedCell.classList.remove('selected');
+  selectedCell=cell;
+  commandMode=command;
+  if(cell)cell.classList.add('selected');
+  deleteArmedUntil=0;
+}
+function commandFocus(cell){
+  closeCompletion();
+  if(document.activeElement && document.activeElement.blur)document.activeElement.blur();
+  selectCell(cell,true);
+  cell.focus({preventScroll:true});
+}
+function insertNear(above){
+  const target=selectedCell || cellsBox.lastElementChild;
+  const cell=append();
+  if(target){
+    cellsBox.insertBefore(cell,above?target:target.nextSibling);
+  }
+  updateNumbers();markDirty();commandFocus(cell);
+  cell.scrollIntoView({block:'nearest'});
+}
+function removeSelected(){
+  const cell=selectedCell;
+  if(!cell)return;
+  const target=cell.nextElementSibling || cell.previousElementSibling;
+  cell.remove();
+  selectedCell=null;
+  if(!cellsBox.children.length)append();
+  updateNumbers();markDirty();
+  commandFocus(target || cellsBox.firstElementChild);
+}
+function closeCompletion(){
+  completionSequence++;
+  clearTimeout(completionTimer);completionTimer=null;
+  if(completionMenu)completionMenu.remove();
+  completionMenu=null;completionItems=[];completionEditor=null;completionPartial='';
+}
+function caretPrefix(editor){
+  if(editor.selectionStart!==editor.selectionEnd)return null;
+  const head=editor.value.slice(0,editor.selectionStart);
+  const match=head.match(/([A-Za-z_][A-Za-z0-9_.]*)$/);
+  if(!match)return null;
+  const prefix=match[1];
+  if(!/^(?:[A-Za-z_][A-Za-z0-9_]*\.)*[A-Za-z_][A-Za-z0-9_]*$/.test(prefix)
+     && !/^(?:[A-Za-z_][A-Za-z0-9_]*\.)+$/.test(prefix))return null;
+  return prefix;
+}
+function acceptCompletion(){
+  if(!completionMenu || !completionEditor || !completionItems.length)return false;
+  const editor=completionEditor;
+  const end=editor.selectionStart;
+  editor.setRangeText(completionItems[completionIndex],end-completionPartial.length,end,'end');
+  editor.focus();
+  closeCompletion();
+  editor.dispatchEvent(new Event('input',{bubbles:true}));
+  return true;
+}
+function moveCompletion(amount){
+  if(!completionMenu)return;
+  completionIndex=(completionIndex+amount+completionItems.length)%completionItems.length;
+  [...completionMenu.children].forEach((item,i)=>{
+    item.classList.toggle('active',i===completionIndex);
+    item.setAttribute('aria-selected',String(i===completionIndex));
+  });
+  completionMenu.children[completionIndex].scrollIntoView({block:'nearest'});
+}
+function renderCompletion(editor,items,prefix){
+  closeCompletion();
+  if(!items.length)return;
+  completionEditor=editor;
+  completionPartial=prefix.slice(prefix.lastIndexOf('.')+1);
+  completionItems=items.slice(0,40);
+  completionIndex=0;
+  const menu=document.createElement('div');
+  menu.className='completion-menu';
+  menu.setAttribute('role','listbox');
+  for(let i=0;i<completionItems.length;i++){
+    const option=document.createElement('div');
+    option.className='completion-item'+(i===0?' active':'');
+    option.textContent=completionItems[i];
+    option.setAttribute('role','option');
+    option.setAttribute('aria-selected',String(i===0));
+    option.addEventListener('mousedown',event=>{
+      event.preventDefault();completionIndex=i;acceptCompletion();
+    });
+    menu.append(option);
+  }
+  editor.closest('.panel').append(menu);
+  completionMenu=menu;
+}
+function requestCompletion(editor,immediate=false){
+  if(composing || busy)return;
+  const prefix=caretPrefix(editor);
+  closeCompletion();
+  if(!prefix || prefix.length>180)return;
+  const requestId=completionSequence;
+  completionTimer=setTimeout(async()=>{
+    try{
+      const data=await api('/complete',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({prefix})
+      });
+      if(completionSequence!==requestId || document.activeElement!==editor
+         || caretPrefix(editor)!==prefix)return;
+      const items=(data.items||[]).filter(name=>name!==prefix);
+      renderCompletion(editor,items,prefix);
+    }catch(error){/* Autocomplete must never block typing. */}
+  },immediate?0:160);
+}
+
 function append(code='', output='', focus=false) {
   const cell = document.createElement('section');
   cell.className = 'cell';
