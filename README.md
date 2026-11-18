@@ -129,3 +129,14 @@ py build_pandas_dlc.py
 ```
 
 在 Siebla 中点「加载 DLC」两次，依次选择 `Siebla-01-NumPy.zip` 和 `Siebla-02-Pandas.zip`。导入完成后测试 `import numpy as np; import pandas as pd`，必要时重启 Siebla。这个机制保持「选择一个 ZIP → 导入」，不需要额外的层级菜单。构建脚本尚未在 Windows 实机跑通，最终容量和可导入性以实际构建结果为准。
+
+
+## 查看已加载的 DLC
+
+Native、Windows Forms、Browser 三个版本都有 **「已加载 DLC」** 按钮。点击后会列出已经导入到 `extensions/` 的 ZIP 名称和状态。这里的“已安装”表示文件已经成功放入扩展目录，并**不等于二进制模块已通过实际 import 测试**。
+
+- 只加载 `Siebla-01-NumPy.zip`：NumPy 文件已安装，`import numpy` 可以尝试，但 `import pandas` 不可用。
+- 只加载 `Siebla-02-Pandas.zip`：列表提示“缺少 NumPy DLC，Pandas 暂不可用”；运行 `import pandas` 通常报缺少 NumPy 的错误。
+- 两个都加载：列表提示依赖包均已检测到，可以运行 `import numpy as np; import pandas as pd` 作最终验证。扩展包与 Python/Windows 架构不兼容时依然可能导入失败。
+
+DLC 扩展目录在启动时自动加入模块搜索路径，安装之后不需要再点一次加载；升级或替换整个 Siebla 文件夹时请保留 `extensions/`。
