@@ -91,4 +91,47 @@ def install(source):
     return f"已加载 DLC：{name}。可以尝试 import 对应的 Python 库。"
 
 
+def list_installed():
+    """Report DLC folders without importing their Python code."""
+    EXTENSIONS.mkdir(exist_ok=True)
+    installed = []
+    for folder in sorted(EXTENSIONS.iterdir()):
+        metadata = folder / "installed.json"
+        if not folder.is_dir() or not metadata.is_file():
+            continue
+        try:
+            data = json.loads(metadata.read_text(encoding="utf-8"))
+            name = str(data.get("name", folder.name))
+        except (OSError, ValueError, TypeError):
+            name = folder.name
+        packages = folder / "site-packages"
+        modules = sorted([
+            p.name for p in packages.iterdir()
+            if p.name in {"numpy", "pandas", "dateutil", "pytz", "tzdata"}
+        ]) if packages.is_dir() else []
+        installed.append({"name": name, "modules": modules})
+
+    available = {module for item in installed for module in item["modules"]}
+    for item in installed:
+        if "pandas" in item["modules"] and "numpy" not in available:
+            item["status"] = "缺少 NumPy DLC，Pandas 暂不可用"
+        elif "pandas" in item["modules"]:
+            item["status"] = "依赖包已检测到，尚未验证实际导入"
+        elif "numpy" in item["modules"]:
+            item["status"] = "NumPy 已安装，尚未验证实际导入"
+        else:
+            item["status"] = "已安装，尚未验证实际导入"
+    return installed
+
+
+def installed_summary():
+    items = list_installed()
+    if not items:
+        return "尚未加载任何 DLC"
+    return "\n".join(
+        f"{i+1}. {item['name']}\n   {item['status']}"
+        for i, item in enumerate(items)
+    )
+
+
 activate()
