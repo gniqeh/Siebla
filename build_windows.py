@@ -88,7 +88,7 @@ def assemble(mode):
 
     files = ["engine.py", "dlc.py", "capabilities.py"]
     if mode == "browser":
-        files += ["sitecustomize.py", "notebook.py", "completion.py", "index.html", "app.js", "style.css"]
+        files += ["sitecustomize.py", "notebook.py", "completion.py", "browser_kernel.py", "index.html", "app.js", "style.css"]
     elif mode == "native":
         files += ["sitecustomize.py", "ui_native.py"]
     else:
