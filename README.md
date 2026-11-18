@@ -82,3 +82,34 @@ cd dist/Siebla-native
 ```
 
 第二条会直接启动窗口，若启动失败可以在 PowerShell 看到 Python 异常。上述诊断只用于开发机，不要求目标电脑操作终端。
+
+## DLC：选择 ZIP，直接加载
+
+三个界面均增加 **「加载 DLC」** 按钮。选择一个专门为 Siebla 准备的 ZIP 后，软件会验证解压路径、离线安装到 `extensions/<压缩包文件名>/site-packages/` 并将它加入当前 Python 的模块搜索路径。目标电脑不需要联网或安装 pip。
+
+ZIP 中应直接包含 Python 库目录，或者使用 `site-packages/` 作为顶层目录。例如：
+
+```text
+Siebla-Pandas.zip
+├── pandas/
+├── pandas.libs/
+├── numpy/
+├── numpy.libs/
+├── dateutil/
+├── pytz/
+├── tzdata/
+├── six.py
+└── ...（相应依赖和元数据）
+```
+
+一个 ZIP 应包含本 DLC 的全部依赖；不设计子 DLC 安装页面。名称不能与已经安装的 DLC 重复。安装可信任的 ZIP 后即可尝试 `import pandas as pd`，如遇二进制模块已加载、DLL 冲突等情况，重启 Siebla 再测试。
+
+在联网构建机生成 Windows 64位 Python 3.12 的 Pandas DLC：
+
+```powershell
+py build_pandas_dlc.py
+```
+
+输出 `dlc_dist/Siebla-Pandas.zip`，其中含 Pandas、NumPy 及解析到的依赖。**DLC 的文件大小独立于20 MB核心本体预算**，目前尚无自动分卷导入功能。不要将不可信的 ZIP 导入办公电脑；Python 扩展含可执行代码和 DLL。
+
+目前已提交功能源码，但尚未完成 Windows 10 上三种界面逐一构建和实机安装测试。
