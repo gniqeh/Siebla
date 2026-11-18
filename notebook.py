@@ -8,6 +8,8 @@ import secrets
 import threading
 import traceback
 import webbrowser
+import tempfile
+from urllib.parse import unquote
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -48,7 +50,44 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         origin = f"http://127.0.0.1:{self.server.server_port}"
-        if (self.path != "/run" or self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
+        if self.path == "/dlc":
+            if (self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
+                    or self.headers.get("Origin") != origin
+                    or self.headers.get("X-Notebook-Token") != TOKEN):
+                return self.reply(403, {"error": "Forbidden"})
+            temp_name = None
+            try:
+                name = unquote(self.headers.get("X-DLC-Name", ""))
+                if not name.lower().endswith(".zip") or name != Path(name).name:
+                    raise ValueError("无效 DLC 文件名")
+                length = int(self.headers.get("Content-Length", "0"))
+                if not 0 < length <= 220 * 1024 * 1024:
+                    return self.reply(413, {"error": "DLC 文件过大"})
+                with tempfile.NamedTemporaryFile(dir=WORK, suffix=".zip",
+                                                  prefix="siebla-upload-", delete=False) as temp:
+                    temp_name = Path(temp.name)
+                    remaining = length
+                    while remaining:
+                        block = self.rfile.read(min(1024 * 1024, remaining))
+                        if not block:
+                            raise ValueError("不完整的 DLC 上传")
+                        temp.write(block)
+                        remaining -= len(block)
+                # Keep original filename for the installed extension directory.
+                import dlc
+                source = temp_name.with_name(name)
+                if source.exists():
+                    raise ValueError("上传文件名冲突")
+                temp_name.rename(source)
+                temp_name = source
+                message = dlc.install(source)
+                return self.reply(200, {"message": message})
+            except Exception as exc:
+                return self.reply(400, {"error": str(exc)})
+            finally:
+                if temp_name is not None:
+                    temp_name.unlink(missing_ok=True)
+                if (self.path != "/run" or self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
                 or self.headers.get("Origin") != origin
                 or self.headers.get("X-Notebook-Token") != TOKEN):
             return self.reply(403, {"error": "Forbidden"})
