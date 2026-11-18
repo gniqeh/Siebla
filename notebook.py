@@ -82,6 +82,21 @@ class Handler(BaseHTTPRequestHandler):
         return self.reply(404, {"error": "Not found"})
 
     def do_POST(self):
+        if self.path == "/complete":
+            if not self.authorized(require_origin=True):
+                return self.reply(403, {"error": "Forbidden"})
+            try:
+                payload = self.read_json_body()
+                prefix = payload.get("prefix")
+                if not isinstance(prefix, str) or len(prefix) > 180:
+                    raise ValueError("无效补全前缀")
+                from completion import complete
+                from engine import VARIABLES
+                with LOCK:
+                    items = complete(prefix, VARIABLES)
+                return self.reply(200, {"items": items})
+            except (ValueError, TypeError, KeyError):
+                return self.reply(400, {"error": "无效补全请求"})
         if self.path == "/book":
             if not self.authorized(require_origin=True):
                 return self.reply(403, {"error": "Forbidden"})
