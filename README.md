@@ -189,15 +189,15 @@ py validate_dlcs.py
 
 ## 告诉大模型我能干啥
 
-Native、Windows Forms 和 Browser 三种界面均添加 **「告诉大模型我能干啥」** 按钮。单击后会从**当前实际环境**生成一份中文说明，便于复制到 ChatGPT 或其他大模型会话中作为运行条件：
+三个界面的按钮会输出**简短的当前环境清单**，仅包含 Python 版本、基础模块、已安装 DLC 的模块、不完整 DLC 和离线警告，不介绍产品、不追加使用建议。浏览器版支持复制全部。
 
-- Siebla 本地离线、Python 版本、单元格执行方式、基础 OpenPyXL/标准库能力；
-- 当前已安装的逻辑 DLC 名称及其 **正常 / 不完整** 状态；
-- 正常的 Excel、PDF、Media DLC 各自预期包含的工具及适用任务；
-- 缺卷或未安装的 DLC 明确排除，不让大模型假设这些模块存在；
-- 每项“正常”仅表示 **分卷校验并安装成功**，**不等于实际 import 已验证**；建议生成代码时先简短验证依赖；
-- 不默认存在外网、pip、Conda、完整 Jupyter 或额外系统软件。
+示例（根据实际安装自动变化）：
 
-Browser：弹出可以阅读和编辑前复制的说明框，支持 **「复制全部」**；Native：说明显示在可选择复制的输出区；Windows Forms：新建输出单元格显示说明。报告是实时生成的，加载新 DLC 后再次点击即可反映新的状态。不读取或外发用户办公文件，生成过程不联网。
+```text
+环境：Windows 便携 Python 3.12.10，代码单元格共享变量。
+内置：openpyxl, et_xmlfile；Python 标准库。
+DLC：Siebla-Excel（已安装）；模块：pandas, numpy, openpyxl, xlsxwriter, rapidfuzz, pyxlsb
+DLC：Siebla-PDF（不完整，不可用）
+注意：完全离线，不能联网或 pip 安装新库；仅使用已具备的模块（DLC 安装不等于 import 验证通过）。
+```
 
-源码自测：`py -m unittest discover -s tests -v`。尚待目标 Windows 机器完整界面测试。
