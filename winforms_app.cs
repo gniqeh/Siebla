@@ -44,6 +44,7 @@ public class SieblaWindow : Form {
         AddButton(top, "保存", (s,e) => SaveBook());
         AddButton(top, "打开", (s,e) => OpenBook());
         AddButton(top, "加载 DLC", (s,e) => LoadDlc());
+        AddButton(top, "已加载 DLC", (s,e) => ShowDlc());
         area.Dock = DockStyle.Fill;
         area.AutoScroll = true;
         area.FlowDirection = FlowDirection.TopDown;
@@ -127,6 +128,11 @@ public class SieblaWindow : Form {
         Action next = null;
         next = () => { if(i < cells.Count) RunCell(cells[i++], next); };
         next();
+    }
+    void ShowDlc() {
+        // Uses the shared Python backend and displays the result in the notebook.
+        var cell = AddCell("import dlc\nprint(dlc.installed_summary())");
+        RunCell(cell);
     }
     void LoadDlc() {
         using(var dialog = new OpenFileDialog { Filter = "Siebla 扩展包|*.zip", Title = "选择离线 DLC ZIP" }) {
