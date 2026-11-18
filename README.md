@@ -69,3 +69,16 @@ runtime/python-3.12.10-embed-amd64.zip
 在 Actions → Build Siebla → Run workflow 中选择 `native`、`winforms`、`browser` 或 `all`。但若 GitHub Actions 因账号问题不能启动，仍可使用本机命令构建。
 
 仓库源码不包含任何单位的工作数据。不要把办公文件提交到公开仓库。
+
+
+## Native 版启动诊断
+
+如果双击 `Siebla.exe` 后没有窗口，先检查 `work/siebla-startup-error.txt`；新版本会同时弹出错误提示。用于开发阶段的直接检查：
+
+```powershell
+cd dist/Siebla-native
+.\python.exe -c "import ui_native; print('Native module import OK')"
+.\python.exe -c "import ui_native; ui_native.main()"
+```
+
+第二条会直接启动窗口，若启动失败可以在 PowerShell 看到 Python 异常。上述诊断只用于开发机，不要求目标电脑操作终端。
