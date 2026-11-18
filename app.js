@@ -216,18 +216,46 @@ function append(code='', output='', focus=false) {
     updateNumbers();markDirty();
   },'danger');
   controls.append(run,up,down,clear,spacer,status,del);
-  editor.addEventListener('input',markDirty);
+  editor.addEventListener('focus',()=>selectCell(cell,false));
+  cell.addEventListener('click',event=>{
+    if(event.target.closest('textarea,button,.completion-menu'))return;
+    commandFocus(cell);
+  });
+  editor.addEventListener('compositionstart',()=>{
+    composing=true;closeCompletion();
+  });
+  editor.addEventListener('compositionend',()=>{
+    composing=false;requestCompletion(editor);
+  });
+  editor.addEventListener('input',()=>{
+    updateLines();markDirty();
+    if(!composing)requestCompletion(editor);
+  });
   editor.addEventListener('keydown',event=>{
+    if(event.isComposing)return;
+    if(event.key==='Escape'){
+      event.preventDefault();commandFocus(cell);return;
+    }
+    if(completionMenu && completionEditor===editor){
+      if(event.key==='ArrowDown'){event.preventDefault();moveCompletion(1);return;}
+      if(event.key==='ArrowUp'){event.preventDefault();moveCompletion(-1);return;}
+      if(event.key==='Tab' || (event.key==='Enter' && !event.shiftKey)){
+        event.preventDefault();acceptCompletion();return;
+      }
+    }
+    if(event.key===' ' && event.ctrlKey){
+      event.preventDefault();requestCompletion(editor,true);return;
+    }
     if(event.key==='Enter' && event.shiftKey){
-      event.preventDefault();
+      event.preventDefault();closeCompletion();
       execute(cell).then(()=>{
-        const next=cell.nextElementSibling || append('','');
+        const next=cell.nextElementSibling || append();
         next.querySelector('textarea').focus();
       });
     }else if(event.key==='Tab'){
       event.preventDefault();
       editor.setRangeText('    ',editor.selectionStart,editor.selectionEnd,'end');
-      markDirty();
+      updateLines();markDirty();
     }
   });
   panel.append(codeArea,controls,outputBox);
