@@ -10,9 +10,12 @@
 py build_windows.py --ui native
 py build_windows.py --ui winforms
 py build_windows.py --ui browser
+
+# 一次分别构建三个版本（调试推荐）
+py build_windows.py --ui all
 ```
 
-不带 `--ui` 且在终端运行时，会出现选择菜单；默认 `native`。
+不带 `--ui` 且在终端运行时，会出现 1/2/3/4 选择菜单，其中 **4 = all**；默认 `native`。`all` 会顺序生成三个独立 ZIP，某一版失败仍会尝试另外两版，最后汇总结果并以非零退出码报告失败。
 
 | 参数 | 界面 | 运行电脑需要 |
 | --- | --- | --- |
@@ -30,7 +33,7 @@ dist/Siebla-winforms.zip
 dist/Siebla-browser.zip
 ```
 
-**每次构建只生成一个 ZIP**，严格检查单包不超过 **20,000,000 字节**。压缩包内有 `Siebla.exe`，目标电脑无需安装 Python，也无需操作 CMD。
+默认每次构建只生成一个 ZIP；使用 `--ui all` 则一次分别生成三个 ZIP，严格检查每个单包不超过 **20,000,000 字节**。压缩包内有 `Siebla.exe`，目标电脑无需安装 Python，也无需操作 CMD。
 
 ## 核心使用
 
@@ -63,6 +66,6 @@ runtime/python-3.12.10-embed-amd64.zip
 
 ## GitHub Actions
 
-在 Actions → Build Siebla → Run workflow 中选择 `native`、`winforms` 或 `browser`。但若 GitHub Actions 因账号问题不能启动，仍可使用本机命令构建。
+在 Actions → Build Siebla → Run workflow 中选择 `native`、`winforms`、`browser` 或 `all`。但若 GitHub Actions 因账号问题不能启动，仍可使用本机命令构建。
 
 仓库源码不包含任何单位的工作数据。不要把办公文件提交到公开仓库。
