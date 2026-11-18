@@ -24,7 +24,7 @@ class WNDCLASSEXW(C.Structure):
     _fields_ = [
         ("cbSize", W.UINT), ("style", W.UINT), ("lpfnWndProc", WNDPROC),
         ("cbClsExtra", C.c_int), ("cbWndExtra", C.c_int),
-        ("hInstance", W.HINSTANCE), ("hIcon", W.HICON), ("hCursor", W.HCURSOR),
+        ("hInstance", W.HINSTANCE), ("hIcon", W.HICON), ("hCursor", W.HANDLE),
         ("hbrBackground", W.HBRUSH), ("lpszMenuName", W.LPCWSTR),
         ("lpszClassName", W.LPCWSTR), ("hIconSm", W.HICON),
     ]
