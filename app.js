@@ -90,3 +90,15 @@ document.getElementById('dlc-file').onchange=async e=>{
   }catch(error){alert('DLC 导入失败：'+String(error));}
   finally{e.target.value='';button.disabled=false;button.textContent=old;}
 };
+
+document.getElementById('dlc-list').onclick=async()=>{
+  try{
+    const response=await fetch('/dlc-status',{headers:{'X-Notebook-Token':token}});
+    const data=await response.json();
+    if(!response.ok)throw Error(data.error||'查询失败');
+    const items=data.installed||[];
+    const lines=items.length?items.map((item,i)=>
+      (i+1)+'. '+item.name+'\n   '+item.status):['尚未加载任何 DLC'];
+    alert('已加载 DLC\n\n'+lines.join('\n\n'));
+  }catch(error){alert('查询 DLC 失败：'+String(error));}
+};
