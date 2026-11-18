@@ -11,6 +11,7 @@ on:
           - native
           - winforms
           - browser
+          - all
 jobs:
   windows:
     runs-on: windows-latest
@@ -30,7 +31,9 @@ jobs:
       - name: Smoke test embedded Python
         shell: pwsh
         run: |
-          $dir = Join-Path $PWD "dist/Siebla-${{ inputs.ui }}"
+          $selected = "${{ inputs.ui }}"
+          $variant = if ($selected -eq "all") { "native" } else { $selected }
+          $dir = Join-Path $PWD "dist/Siebla-$variant"
           & "$dir/python.exe" -c "import sys, openpyxl, et_xmlfile; assert sys.version_info[:2] == (3, 12); print(sys.executable, openpyxl.__version__)"
           & "$dir/python.exe" -c "import engine; print(engine.run_cell('2+3'))"
           if (!(Test-Path "$dir/Siebla.exe")) { throw "Missing launcher" }
@@ -38,6 +41,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Siebla-${{ inputs.ui }}-Windows-x64
-          path: dist/Siebla-${{ inputs.ui }}.zip
+          path: dist/Siebla-*.zip
           if-no-files-found: error
           retention-days: 30
