@@ -1,15 +1,12 @@
 """Siebla local-only notebook server, no third-party server dependencies."""
-import ast
-import contextlib
-import io
 import json
 import os
 import secrets
 import threading
-import traceback
 import webbrowser
 import tempfile
 import dlc  # Activate previously installed DLCs in browser sessions.
+from engine import run_cell
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -18,7 +15,6 @@ WORK = ROOT / "work"
 WORK.mkdir(exist_ok=True)
 os.chdir(WORK)
 TOKEN = secrets.token_urlsafe(24)
-VARS = {"__name__": "__main__"}
 LOCK = threading.Lock()
 MAX_BYTES = 3_000_000
 BOOK_FILE = WORK / 'Siebla-notebook.json'
@@ -144,25 +140,9 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Code must be text")
         except (ValueError, KeyError, TypeError):
             return self.reply(400, {"error": "Invalid request"})
-        stdout, stderr = io.StringIO(), io.StringIO()
         with LOCK:
-            try:
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    tree = ast.parse(code, filename="<cell>", mode="exec")
-                    if tree.body and isinstance(tree.body[-1], ast.Expr):
-                        expr = ast.Expression(tree.body.pop().value)
-                        if tree.body:
-                            exec(compile(tree, "<cell>", "exec"), VARS)
-                        result = eval(compile(expr, "<cell>", "eval"), VARS)
-                        if result is not None:
-                            print(repr(result))
-                    else:
-                        exec(compile(tree, "<cell>", "exec"), VARS)
-                ok = True
-            except BaseException:
-                traceback.print_exc(file=stderr)
-                ok = False
-        return self.reply(200, {"ok": ok, "stdout": stdout.getvalue()[-120000:], "stderr": stderr.getvalue()[-120000:]},)
+            result = run_cell(code)
+        return self.reply(200, result)
 
 def main():
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
