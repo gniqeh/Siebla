@@ -74,21 +74,22 @@ document.getElementById('file').onchange=async e=>{
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();}});
 append('import sys\nprint("Python", sys.version.split()[0])\nprint("解释器：", sys.executable)');
 
-document.getElementById('dlc').onclick=()=>document.getElementById('dlc-file').click();
-document.getElementById('dlc-file').onchange=async e=>{
-  const file=e.target.files[0];if(!file)return;
-  const button=document.getElementById('dlc');button.disabled=true;
-  const old=button.textContent;button.textContent='导入中…';
+document.getElementById('dlc').onclick=async()=>{
+  const button=document.getElementById('dlc');
+  button.disabled=true;
+  const old=button.textContent;
+  button.textContent='选择 DLC…';
   try{
-    const response=await fetch('/dlc',{method:'POST',
-      headers:{'X-Notebook-Token':token,'X-DLC-Name':encodeURIComponent(file.name),
-               'Content-Type':'application/zip'},
-      body:file});
+    const response=await fetch('/dlc-select',{
+      method:'POST',
+      headers:{'X-Notebook-Token':token, 'Content-Type':'application/json'},
+      body:'{}'
+    });
     const data=await response.json();
-    if(!response.ok)throw new Error(data.error||'DLC 导入失败');
-    alert(data.message||'DLC 导入成功');
-  }catch(error){alert('DLC 导入失败：'+String(error));}
-  finally{e.target.value='';button.disabled=false;button.textContent=old;}
+    if(!response.ok)throw Error(data.error||'加载失败');
+    if(!data.cancelled)alert(data.message||'DLC 加载完成');
+  }catch(error){alert('DLC 加载失败：'+String(error));}
+  finally{button.disabled=false;button.textContent=old;}
 };
 
 document.getElementById('dlc-list').onclick=async()=>{
@@ -98,7 +99,7 @@ document.getElementById('dlc-list').onclick=async()=>{
     if(!response.ok)throw Error(data.error||'查询失败');
     const items=data.installed||[];
     const lines=items.length?items.map((item,i)=>
-      (i+1)+'. '+item.name+'\n   '+item.status):['尚未加载任何 DLC'];
+      (i+1)+'. '+item.name+'（'+item.status+'）\n   '+(item.detail||'')):['尚未加载任何 DLC'];
     alert('已加载 DLC\n\n'+lines.join('\n\n'));
   }catch(error){alert('查询 DLC 失败：'+String(error));}
 };
