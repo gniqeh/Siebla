@@ -110,7 +110,7 @@ Siebla-Pandas.zip
 py build_pandas_dlc.py
 ```
 
-输出 `dlc_dist/Siebla-Pandas.zip`，其中含 Pandas、NumPy 及解析到的依赖。**DLC 的文件大小独立于20 MB核心本体预算**，目前尚无自动分卷导入功能。不要将不可信的 ZIP 导入办公电脑；Python 扩展含可执行代码和 DLL。
+输出 `dlc_dist/Siebla-01-NumPy.zip` 和 `dlc_dist/Siebla-02-Pandas.zip`。**每个 ZIP 都强制小于等于20,000,000字节**，Pandas 的其他依赖放在第二包。离线电脑上依次点击两次「加载 DLC」，先选 NumPy，再选 Pandas。无需分卷功能，也无需手动合并压缩包。不要将不可信的 ZIP 导入办公电脑；Python 扩展含可执行代码和 DLL。
 
 目前已提交功能源码，但尚未完成 Windows 10 上三种界面逐一构建和实机安装测试。
 
@@ -118,3 +118,14 @@ py build_pandas_dlc.py
 ## Browser 版退出方式
 
 浏览器版启动后会同时打开 **本地网页** 和 **Siebla Browser 命令行窗口**。关闭该命令行窗口，即终止对应 Python 本地服务，解除对程序文件的占用。不要把关闭网页标签误认为退出服务。还可以运行 `启动浏览器版.cmd`，它同样使用前台 Python 服务进程。关闭窗口属于强制终止，退出前请先在网页里保存笔记本。
+
+
+### Pandas DLC 单包超20 MB时
+
+当前构建器不再把 NumPy 与 Pandas 合并成一个大 ZIP，而是自动拆成两个独立小包，并分别检查20 MB上限：
+
+```powershell
+py build_pandas_dlc.py
+```
+
+在 Siebla 中点「加载 DLC」两次，依次选择 `Siebla-01-NumPy.zip` 和 `Siebla-02-Pandas.zip`。导入完成后测试 `import numpy as np; import pandas as pd`，必要时重启 Siebla。这个机制保持「选择一个 ZIP → 导入」，不需要额外的层级菜单。构建脚本尚未在 Windows 实机跑通，最终容量和可导入性以实际构建结果为准。
