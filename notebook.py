@@ -87,7 +87,7 @@ class Handler(BaseHTTPRequestHandler):
             finally:
                 if temp_name is not None:
                     temp_name.unlink(missing_ok=True)
-                if (self.path != "/run" or self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
+        if (self.path != "/run" or self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}"
                 or self.headers.get("Origin") != origin
                 or self.headers.get("X-Notebook-Token") != TOKEN):
             return self.reply(403, {"error": "Forbidden"})
