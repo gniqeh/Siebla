@@ -1,8 +1,16 @@
 name: Build Siebla
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
+    inputs:
+      ui:
+        description: "Select frontend"
+        required: true
+        default: native
+        type: choice
+        options:
+          - native
+          - winforms
+          - browser
 jobs:
   windows:
     runs-on: windows-latest
@@ -16,18 +24,20 @@ jobs:
         with:
           python-version: '3.12'
           architecture: x64
-      - name: Build offline package
-        run: python build_windows.py
+      - name: Build selected frontend
+        shell: pwsh
+        run: python build_windows.py --ui ${{ inputs.ui }}
       - name: Smoke test embedded Python
         shell: pwsh
         run: |
-          $dir = Join-Path $PWD "dist/Siebla"
+          $dir = Join-Path $PWD "dist/Siebla-${{ inputs.ui }}"
           & "$dir/python.exe" -c "import sys, openpyxl, et_xmlfile; assert sys.version_info[:2] == (3, 12); print(sys.executable, openpyxl.__version__)"
-          & "$dir/python.exe" -c "import notebook; print('Notebook import OK')"
+          & "$dir/python.exe" -c "import engine; print(engine.run_cell('2+3'))"
+          if (!(Test-Path "$dir/Siebla.exe")) { throw "Missing launcher" }
       - name: Upload portable ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: Siebla-Windows-x64
-          path: dist/Siebla.zip
+          name: Siebla-${{ inputs.ui }}-Windows-x64
+          path: dist/Siebla-${{ inputs.ui }}.zip
           if-no-files-found: error
           retention-days: 30
