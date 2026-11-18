@@ -59,8 +59,6 @@ public class SieblaWindow : Form {
         info.RedirectStandardInput = true;
         info.RedirectStandardOutput = true;
         info.RedirectStandardError = true;
-        info.StandardInputEncoding = Encoding.UTF8;
-        info.StandardOutputEncoding = Encoding.UTF8;
         python = Process.Start(info);
         AddCell("import sys\nprint('Python', sys.version.split()[0])\nprint('解释器', sys.executable)");
     }
