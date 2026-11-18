@@ -86,7 +86,7 @@ def assemble(mode):
     for metadata in site.glob("*.dist-info"):
         shutil.rmtree(metadata)
 
-    files = ["engine.py"]
+    files = ["engine.py", "dlc.py"]
     if mode == "browser":
         files += ["sitecustomize.py", "notebook.py", "index.html", "app.js", "style.css"]
     elif mode == "native":
