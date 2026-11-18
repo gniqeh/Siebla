@@ -1,7 +1,7 @@
 """Build independent Siebla Excel / PDF / Media DLCs, or all three.
 
 Every DLC is self-contained relative to Siebla Core and may be split into
-multiple ZIP volumes of at most 20,000,000 bytes. No extra target-PC install.
+multiple ZIP volumes of at most 18,000,000 bytes. No extra target-PC install.
 """
 import argparse
 from pathlib import Path
