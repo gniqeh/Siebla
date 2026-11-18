@@ -131,7 +131,7 @@ public class SieblaWindow : Form {
         next();
     }
     void ShowAiCapabilities() {
-        var cell = AddCell("from capabilities import describe_environment\\nprint(describe_environment())");
+        var cell = AddCell("from capabilities import describe_environment\nprint(describe_environment())");
         RunCell(cell);
         status.Text = "说明将显示在新单元格输出区，可选择复制";
     }
