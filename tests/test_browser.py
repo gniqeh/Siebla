@@ -76,6 +76,25 @@ class NotebookApiTests(unittest.TestCase):
         unsafe = self.request("/complete", {"prefix": "__import__('os')."})
         self.assertEqual(unsafe["items"], [])
 
+    def test_variable_view_and_reset(self):
+        saved = self.request("/book", {
+            "format": "siebla-notebook-v1",
+            "cells": [{"code": "temporary_data = [1, 2, 3]", "output": "previous result"}],
+        })
+        self.assertTrue(saved["saved"])
+        created = self.request("/run", {"code": "siebla_variable_test = [1,2,3]"})
+        self.assertTrue(created["ok"])
+        entries = {v["name"]: v for v in self.request("/variables")["variables"]}
+        self.assertEqual(entries["siebla_variable_test"]["type"], "builtins.list")
+        self.assertIn("3 项", entries["siebla_variable_test"]["preview"])
+        reset = self.request("/kernel-reset", {})
+        self.assertTrue(reset["ok"])
+        names = [v["name"] for v in self.request("/variables")["variables"]]
+        self.assertNotIn("siebla_variable_test", names)
+        self.assertEqual(self.request("/book")["cells"][0]["output"], "previous result")
+        completion = self.request("/complete", {"prefix": "siebla_variable_test"})
+        self.assertNotIn("siebla_variable_test", completion["items"])
+
     def test_run_uses_shared_engine(self):
         response = self.request("/run", {"code": "browser_test_number=37"})
         self.assertTrue(response["ok"])
