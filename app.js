@@ -417,7 +417,30 @@ document.getElementById('file').onchange=async event=>{
 };
 document.addEventListener('keydown',event=>{
   if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){
-    event.preventDefault();saveLocal();
+    event.preventDefault();saveLocal();return;
+  }
+  if(!commandMode || !selectedCell || event.defaultPrevented || event.isComposing
+     || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || infoDialog.open
+     || event.target.closest('textarea,input,button,[contenteditable="true"]'))return;
+  const key=event.key.toLowerCase();
+  if(key==='a'){
+    event.preventDefault();insertNear(true);
+  }else if(key==='b'){
+    event.preventDefault();insertNear(false);
+  }else if(key==='d'){
+    event.preventDefault();
+    const now=Date.now();
+    if(deleteArmedUntil>now){
+      deleteArmedUntil=0;removeSelected();
+    }else{
+      deleteArmedUntil=now+1000;
+      runState.textContent='再按 D 删除当前单元格';
+    }
+  }else if(key==='enter'){
+    event.preventDefault();
+    selectedCell.querySelector('.editor').focus();
+  }else{
+    deleteArmedUntil=0;
   }
 });
 window.addEventListener('beforeunload',event=>{
