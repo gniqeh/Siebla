@@ -133,17 +133,35 @@ def assemble(mode):
 
 def main():
     parser = argparse.ArgumentParser(description="Siebla Windows x64 offline builder")
-    parser.add_argument("--ui", choices=MODES, help="Select one frontend")
+    parser.add_argument("--ui", choices=(*MODES, "all"), help="Select frontend or all")
     args = parser.parse_args()
     mode = args.ui
     if mode is None and sys.stdin.isatty():
         print("Select Siebla UI:\n  1. native   - Win32 desktop window (no .NET or browser)\n"
               "  2. winforms - Windows Forms desktop window (.NET Framework)\n"
-              "  3. browser - local page opened in the default browser")
-        choice = input("Enter 1/2/3 [1]: ").strip() or "1"
-        mode = {"1": "native", "2": "winforms", "3": "browser"}.get(choice)
+              "  3. browser - local page opened in the default browser\n"
+              "  4. all     - build all three separately")
+        choice = input("Enter 1/2/3/4 [1]: ").strip() or "1"
+        mode = {"1": "native", "2": "winforms", "3": "browser", "4": "all"}.get(choice)
         if mode is None:
-            parser.error("Choose 1, 2 or 3")
+            parser.error("Choose 1, 2, 3 or 4")
+    if mode == "all":
+        successes, failures = [], []
+        for variant in MODES:
+            print(f"\n===== Building {variant} =====", flush=True)
+            try:
+                successes.append(assemble(variant))
+            except Exception as exc:
+                failures.append((variant, str(exc)))
+                print(f"FAILED [{variant}]: {exc}", flush=True)
+        print("\nBuild summary:")
+        for path in successes:
+            print(f"  PASS: {path.name}")
+        for variant, error in failures:
+            print(f"  FAIL: {variant}: {error}")
+        if failures:
+            raise SystemExit(1)
+        return
     assemble(mode or "native")
 
 
