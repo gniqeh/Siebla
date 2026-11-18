@@ -50,6 +50,13 @@ class Handler(BaseHTTPRequestHandler):
         return json.loads(self.rfile.read(length))
 
     def do_GET(self):
+        if self.path == "/variables":
+            if not self.authorized():
+                return self.reply(403, {"error": "Forbidden"})
+            from browser_kernel import list_variables
+            with LOCK:
+                items = list_variables()
+            return self.reply(200, {"variables": items})
         if self.path == "/book":
             if not self.authorized():
                 return self.reply(403, {"error": "Forbidden"})
@@ -82,6 +89,16 @@ class Handler(BaseHTTPRequestHandler):
         return self.reply(404, {"error": "Not found"})
 
     def do_POST(self):
+        if self.path == "/kernel-reset":
+            if not self.authorized(require_origin=True):
+                return self.reply(403, {"error": "Forbidden"})
+            from browser_kernel import reset_variables
+            with LOCK:
+                reset_variables()
+            return self.reply(200, {
+                "ok": True,
+                "message": "运行时变量已清空；笔记本代码、输出和 DLC 保留。"
+            })
         if self.path == "/complete":
             if not self.authorized(require_origin=True):
                 return self.reply(403, {"error": "Forbidden"})
