@@ -1,0 +1,8 @@
+downloads/
+dist/
+work/
+extensions/
+__pycache__/
+*.pyc
+*.part
+*.part*
