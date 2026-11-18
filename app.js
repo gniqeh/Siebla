@@ -46,7 +46,7 @@ async function execute(cell){
     output.textContent=String(error);output.className='output bad';status.textContent='出错';
   }finally{busy=false;}
 }
-function collect(){return [...box.querySelectorAll('textarea')].map(x=>x.value);}
+function collect(){return [...box.children].map(cell=>({code:cell.querySelector('textarea').value,output:cell.querySelector('.output').textContent}));}
 function save(){
   const blob=new Blob([JSON.stringify({format:'siebla-notebook-v1',cells:collect()},null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='我的笔记本.json';a.click();
@@ -66,7 +66,7 @@ document.getElementById('file').onchange=async e=>{
     else throw Error('不支持的格式');
     if(!Array.isArray(cells)||cells.length>1000)throw Error('无效单元格');
     box.replaceChildren();
-    for(const code of cells)append(String(code));
+    for(const entry of cells){const code=typeof entry==='string'?entry:String(entry.code||'');const cell=append(code);if(entry&&typeof entry==='object'){cell.querySelector('.output').textContent=String(entry.output||'');}}
     if(!cells.length)append();
   }catch(error){alert('打开失败：'+error.message);}
   e.target.value='';
