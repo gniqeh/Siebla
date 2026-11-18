@@ -3,6 +3,7 @@ import ast
 import contextlib
 import io
 import traceback
+import dlc  # Activate installed extensions before executing notebook cells.
 
 VARIABLES = {"__name__": "__main__"}
 
