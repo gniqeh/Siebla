@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from exe_icon import create_ico, embed_exe_icon
 
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "downloads"
@@ -73,6 +74,7 @@ def assemble(mode):
     if sys.platform != "win32" or sys.maxsize <= 2**32:
         raise RuntimeError("Build on Windows 64-bit with Python and pip")
     source, dependencies = python_archive(), wheels()
+    icon_file = create_ico(ROOT)
     dist = ROOT / "dist"
     target = dist / ("Siebla-" + mode)
     if target.exists():
@@ -103,6 +105,7 @@ def assemble(mode):
         # Native keeps pythonw.exe to avoid an unwanted console window.
         launcher = "python.exe" if mode == "browser" else "pythonw.exe"
         shutil.copy2(target / launcher, target / "Siebla.exe")
+        embed_exe_icon(target / "Siebla.exe", icon_file)
         if mode == "browser":
             (target / "启动浏览器版.cmd").write_text(
                 '@echo off\n'
