@@ -126,3 +126,44 @@ py build_pandas_dlc.py
 这是 Siebla 自定义的多卷 DLC ZIP 格式，**不是传统 ZIP 分卷**；不要用常规分卷压缩软件生成 `_01.zip` 文件后期待它被自动识别。必须由对应打包器生成带 `siebla-dlc.json` 清单的格式。
 
 出于安全考虑，只导入可信来源的 DLC：扩展包能提供可执行 Python 代码和 Windows DLL。当前源码已提交，但 Windows 三界面与实际 Pandas DLL 导入尚待实机验收。
+
+
+## 第一批独立 DLC 套件
+
+DLC 生成器只有一个入口，构建时可选 **一个套件** 或 **全部三个**：
+
+\`\`\`powershell
+py build_dlcs.py --dlc excel
+py build_dlcs.py --dlc pdf
+py build_dlcs.py --dlc media
+py build_dlcs.py --dlc all
+\`\`\`
+
+在终端直接执行 \`py build_dlcs.py\` 时，还可以选择 1/2/3/4，默认 4（全部）。
+
+| DLC 名称 | 独立包含的核心依赖 | 使用场景 |
+| --- | --- | --- |
+| \`Siebla-Excel\` | pandas、NumPy、openpyxl、XlsxWriter、rapidfuzz、pyxlsb 及它们的依赖 | Excel 合并、跨表匹配、模糊匹配、数据清洗、报表 |
+| \`Siebla-PDF\` | pypdf、PyMuPDF、reportlab 及其依赖 | PDF 拆分合并、内容提取、水印、报告生成 |
+| \`Siebla-Media\` | Pillow、piexif、ImageHash 及其依赖（含 NumPy、SciPy、PyWavelets 等） | 图片批处理、EXIF、近似图片识别 |
+
+三个 DLC **互不要求预先安装其他 DLC**。构建命令会下载面向 Windows x64 / Python 3.12 的全部所需 wheels，并打包进所选套件。共用的 NumPy 和 Pillow 指定了相同版本，以降低组合加载时的冲突风险。Siebla Core 本身仍自带 OpenPyXL。
+
+输出目录示例：
+
+\`\`\`text
+dlc_dist/
+├── Siebla-Excel/
+│   ├── Siebla-Excel_01.zip
+│   └── Siebla-Excel_02.zip
+├── Siebla-PDF/
+│   ├── Siebla-PDF_01.zip
+│   └── ...
+└── Siebla-Media/
+    ├── Siebla-Media_01.zip
+    └── ...
+\`\`\`
+
+每个 ZIP 的硬上限是 **20,000,000 字节**。每个 DLC 的分卷数量由实际文件体积决定。**每个套件的所有分卷必须放在同一文件夹**；选中任意一个分卷即可自动查找、校验并导入同一套件的其余分卷。不同套件则按需分别加载，各自独立记录「正常 / 不完整」状态。
+
+构建机可能需要联网并安装 pip；**目标电脑始终不需要联网、额外安装 Python 或 pip**。目前仅提交了源码，三个套件所有组合的 Windows 实机导入和二进制 DLL 兼容性仍需要验证。
